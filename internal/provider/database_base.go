@@ -1,0 +1,71 @@
+package provider
+
+import (
+	"context"
+	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/tkielar/terraform-provider-mssql/internal/sql"
+	"github.com/tkielar/terraform-provider-mssql/internal/utils"
+	"github.com/tkielar/terraform-provider-mssql/internal/validators"
+	"strconv"
+)
+
+var databaseAttributes = map[string]tfsdk.Attribute{
+	"id": {
+		Description: "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
+		Type:        types.StringType,
+	},
+	"name": {
+		Description:         "Database name. ",
+		MarkdownDescription: "Database name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)",
+		Type:                types.StringType,
+		Validators:          validators.DatabaseNameValidators,
+	},
+	"collation": {
+		Description: "Default collation name. Can be either a Windows collation name or a SQL collation name.",
+		Type:        types.StringType,
+	},
+}
+
+func getDB(ctx context.Context, getter utils.DataGetter) (databaseResourceData, sql.DatabaseId) {
+	data := utils.GetData[databaseResourceData](ctx, getter)
+	if utils.HasError(ctx) {
+		return data, sql.NullDatabaseId
+	}
+
+	if data.Id.Unknown || data.Id.Null {
+		return data, sql.NullDatabaseId
+	} else {
+		id, err := strconv.Atoi(data.Id.Value)
+		if err != nil {
+			utils.AddError(ctx, fmt.Sprintf("Failed to convert resource ID '%s'", data.Id.Value), err)
+		}
+
+		return data, sql.DatabaseId(id)
+	}
+}
+
+type databaseResourceData struct {
+	Id        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Collation types.String `tfsdk:"collation"`
+}
+
+func (d databaseResourceData) toSettings() sql.DatabaseSettings {
+	return sql.DatabaseSettings{
+		Name:      d.Name.Value,
+		Collation: d.Collation.Value,
+	}
+}
+
+func (d databaseResourceData) withSettings(settings sql.DatabaseSettings) databaseResourceData {
+	return databaseResourceData{
+		Id:   d.Id,
+		Name: types.String{Value: settings.Name},
+		Collation: types.String{
+			Value: settings.Collation,
+			Null:  settings.Collation == "",
+		},
+	}
+}

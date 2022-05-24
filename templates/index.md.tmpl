@@ -1,0 +1,31 @@
+---
+layout: ""
+page_title: "Provider: MS SQL Server"
+description: The provider can be used to configure objects in Microsoft SQL Server and Azure SQL instances.
+---
+
+# MS SQL provider
+
+The provider can be used to configure objects in Microsoft SQL Server and Azure SQL instances.
+
+## Authentication methods
+
+### SQL auth
+Provider username and password, using `sql_auth` field:
+{{tffile "examples/provider/sql.tf"}}
+
+### Azure AD
+In case of Azure SQL connections, Azure Active Directory auth tokens can be used to authenticate.
+
+#### Service Principal
+Provide client ID (a.k.a. application ID), secret and tenant ID, using `azure_auth` field:
+{{tffile "examples/provider/aad_sp.tf"}}
+
+#### Default chained credentials
+When `azure_auth` value is set to empty object (`{}`), the provider uses chained credentials built from `EnvironmentCredential` -> `ManagedIdentityCredential` -> `AzureCLICredential`.
+See [DefaultAzureCredential docs](https://github.com/Azure/azure-sdk-for-go/wiki/Set-up-Your-Environment-for-Authentication#configure-defaultazurecredential) for details.
+
+Example:
+{{tffile "examples/provider/aad_default.tf"}}
+
+{{ .SchemaMarkdown | trimspace }}
