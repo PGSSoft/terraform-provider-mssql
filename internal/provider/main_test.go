@@ -55,8 +55,15 @@ func TestMain(m *testing.M) {
 
 func startMSSQL() {
 	const (
-		img = "mcr.microsoft.com/mssql/server"
+		imgName = "mcr.microsoft.com/mssql/server"
 	)
+
+	imgTag := os.Getenv("TF_MSSQL_IMG_TAG")
+	if imgTag == "" {
+		imgTag = "2019-latest"
+	}
+
+	img := fmt.Sprintf("%s:%s", imgName, imgTag)
 
 	ctx := context.Background()
 
