@@ -9,10 +9,10 @@
 - [Go](https://go.dev/doc/install) 1.18 (to build the provider)
 
 ## Building the provider 
-Clone repository to: `$GOPATH/src/github.com/tkielar/terraform-provider-mssql`
+Clone repository to: `$GOPATH/src/github.com/PGSSoft/terraform-provider-mssql`
 
 ```shell
-$ cd $GOPATH/src/github.com/tkielar/terraform-provider-mssql
+$ cd $GOPATH/src/github.com/PGSSoft/terraform-provider-mssql
 $ go install 
 ```
 

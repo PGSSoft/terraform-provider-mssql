@@ -2,8 +2,8 @@ package provider
 
 import (
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/tkielar/terraform-provider-mssql/internal/sql"
 	"regexp"
 	"testing"
 )

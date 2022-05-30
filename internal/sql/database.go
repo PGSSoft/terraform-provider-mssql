@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/tkielar/terraform-provider-mssql/internal/utils"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
 )
 

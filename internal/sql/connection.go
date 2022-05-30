@@ -3,7 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"github.com/tkielar/terraform-provider-mssql/internal/utils"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"net/url"
 
 	_ "github.com/denisenkom/go-mssqldb"
