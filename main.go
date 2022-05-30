@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/tkielar/terraform-provider-mssql/internal/provider"
 )
 
 //go:generate terraform fmt -recursive ./examples/
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/tkielar/mssql",
+		Address: "registry.terraform.io/PGSSoft/mssql",
 		Debug:   *debug,
 	}
 

@@ -1,4 +1,4 @@
-module github.com/tkielar/terraform-provider-mssql
+module github.com/PGSSoft/terraform-provider-mssql
 
 go 1.18
 

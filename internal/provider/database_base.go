@@ -3,11 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/tkielar/terraform-provider-mssql/internal/sql"
-	"github.com/tkielar/terraform-provider-mssql/internal/utils"
-	"github.com/tkielar/terraform-provider-mssql/internal/validators"
 	"strconv"
 )
 
