@@ -16,14 +16,12 @@ var (
 )
 
 const (
-	VersionDev  Version = "dev"
-	VersionTest         = "test"
+	VersionDev  = "dev"
+	VersionTest = "test"
 )
 
-type Version string
-
 type Resource struct {
-	Version Version
+	Version string
 	Db      sql.Connection
 }
 
@@ -110,7 +108,7 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 }
 
 type provider struct {
-	Version Version
+	Version string
 	Db      sql.Connection
 }
 
@@ -209,7 +207,7 @@ func (p provider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	}, nil
 }
 
-func New(version Version) func() tfsdk.Provider {
+func New(version string) func() tfsdk.Provider {
 	return func() tfsdk.Provider {
 		return &provider{
 			Version: version,
