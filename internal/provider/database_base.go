@@ -13,12 +13,11 @@ import (
 
 var databaseAttributes = map[string]tfsdk.Attribute{
 	"id": {
-		Description: "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
-		Type:        types.StringType,
+		MarkdownDescription: "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
+		Type:                types.StringType,
 	},
 	"name": {
-		Description:         "Database name. ",
-		MarkdownDescription: "Database name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)",
+		MarkdownDescription: fmt.Sprintf("Database name. %s.", regularIdentifiersDoc),
 		Type:                types.StringType,
 		Validators:          validators.DatabaseNameValidators,
 	},

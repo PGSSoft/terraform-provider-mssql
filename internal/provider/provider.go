@@ -20,6 +20,8 @@ const (
 	VersionTest = "test"
 )
 
+const regularIdentifiersDoc = "Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)"
+
 type Resource struct {
 	Version string
 	Db      sql.Connection
@@ -136,14 +138,17 @@ func (p *provider) Configure(ctx context.Context, request tfsdk.ConfigureProvide
 
 func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
 	return map[string]tfsdk.ResourceType{
-		"mssql_database": DatabaseResourceType{},
+		"mssql_database":  DatabaseResourceType{},
+		"mssql_sql_login": SqlLoginResourceType{},
 	}, nil
 }
 
 func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
 	return map[string]tfsdk.DataSourceType{
-		"mssql_database":  DatabaseDataSourceType{},
-		"mssql_databases": DatabaseListDataSourceType{},
+		"mssql_database":   DatabaseDataSourceType{},
+		"mssql_databases":  DatabaseListDataSourceType{},
+		"mssql_sql_login":  SqlLoginDataSourceType{},
+		"mssql_sql_logins": SqlLoginListDataSourceType{},
 	}, nil
 }
 

@@ -1,57 +1,27 @@
 package sql
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/stretchr/testify/suite"
 	"math/rand"
 	"testing"
-	"time"
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func TestDatabaseTestSuite(t *testing.T) {
 	s := &DatabaseTestSuite{}
-	var (
-		_ suite.AfterTest      = s
-		_ suite.SetupTestSuite = s
-	)
 	suite.Run(t, s)
 }
 
 type DatabaseTestSuite struct {
-	suite.Suite
-	conn        connection
-	db          database
-	mock        sqlmock.Sqlmock
-	diags       *diag.Diagnostics
-	ctx         context.Context
-	errExpected bool
+	db database
+	SqlTestSuite
 }
 
 func (s *DatabaseTestSuite) SetupTest() {
-	db, mock, err := sqlmock.New()
-	s.Require().NoError(err, "SQL mock")
-	s.mock = mock
-	s.conn = connection{db: db}
-	s.diags = &diag.Diagnostics{}
-	s.ctx = utils.WithDiagnostics(context.Background(), s.diags)
+	s.SqlTestSuite.SetupTest()
 	s.db = database{connection: s.conn, id: DatabaseId(rand.Int())}
-}
-
-func (s *DatabaseTestSuite) AfterTest(string, string) {
-	if !s.errExpected {
-		s.False(s.diags.HasError(), "Expected no errors in diagnostics, got: %v", s.diags)
-	}
-
-	s.NoError(s.mock.ExpectationsWereMet(), "SQL mock errors")
 }
 
 func (s *DatabaseTestSuite) TestGetDatabaseByName() {
@@ -184,18 +154,6 @@ func (s *DatabaseTestSuite) TestDrop() {
 	expectExactExec(s.mock, "DROP DATABASE [%s]", dbName).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	s.db.Drop(s.ctx)
-}
-
-func (s *DatabaseTestSuite) verifyError(err error) {
-	s.errExpected = true
-
-	for _, d := range *s.diags {
-		if d.Severity() == diag.SeverityError && d.Detail() == err.Error() {
-			return
-		}
-	}
-
-	s.Failf("Missing error", "Could not find error '%s' in diagnostics. Full diagnostics: %v", err, s.diags)
 }
 
 func (s *DatabaseTestSuite) expectDatabasesQuery() *sqlmock.ExpectedQuery {
