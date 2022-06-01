@@ -24,7 +24,7 @@ resource "mssql_database" "example" {
 
 ### Required
 
-- `name` (String) Database name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)
+- `name` (String) Database name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers).
 
 ### Optional
 

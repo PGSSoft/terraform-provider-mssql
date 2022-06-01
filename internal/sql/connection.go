@@ -26,6 +26,10 @@ type Connection interface {
 	GetDatabase(_ context.Context, id DatabaseId) Database
 	GetDatabaseByName(_ context.Context, name string) Database
 	GetDatabases(context.Context) map[DatabaseId]Database
+	CreateSqlLogin(context.Context, SqlLoginSettings) SqlLogin
+	GetSqlLogin(_ context.Context, id LoginId) SqlLogin
+	GetSqlLoginByName(_ context.Context, name string) SqlLogin
+	GetSqlLogins(_ context.Context) map[LoginId]SqlLogin
 }
 
 type connection struct {
