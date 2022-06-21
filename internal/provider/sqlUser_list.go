@@ -41,7 +41,7 @@ func (s SqlUserListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, dia
 			}(),
 			"users": {
 				Description: "Set of SQL user objects",
-				Attributes:  tfsdk.SetNestedAttributes(attrs, tfsdk.SetNestedAttributesOptions{}),
+				Attributes:  tfsdk.SetNestedAttributes(attrs),
 				Computed:    true,
 			},
 		},

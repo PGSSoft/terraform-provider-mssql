@@ -34,7 +34,7 @@ func (l DatabaseListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, di
 			},
 			"databases": {
 				Description: "Set of database objects",
-				Attributes:  tfsdk.SetNestedAttributes(attrs, tfsdk.SetNestedAttributesOptions{}),
+				Attributes:  tfsdk.SetNestedAttributes(attrs),
 				Computed:    true,
 			},
 		},
