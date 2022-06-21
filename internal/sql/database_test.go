@@ -21,7 +21,7 @@ type DatabaseTestSuite struct {
 
 func (s *DatabaseTestSuite) SetupTest() {
 	s.SqlTestSuite.SetupTest()
-	s.db = database{connection: s.conn, id: DatabaseId(rand.Int())}
+	s.db = database{conn: s.conn, id: DatabaseId(rand.Int())}
 }
 
 func (s *DatabaseTestSuite) TestGetDatabaseByName() {

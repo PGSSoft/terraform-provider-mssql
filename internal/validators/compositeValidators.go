@@ -12,3 +12,8 @@ var DatabaseNameValidators = []tfsdk.AttributeValidator{
 var LoginNameValidators = []tfsdk.AttributeValidator{
 	sqlIdentifierValidator{},
 }
+
+var UserNameValidators = []tfsdk.AttributeValidator{
+	sqlIdentifierValidator{},
+	stringLengthValidator{Min: 1, Max: 128},
+}
