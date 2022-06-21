@@ -34,7 +34,7 @@ func (l SqlLoginListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, di
 			},
 			"logins": {
 				Description: "Set of SQL login objects",
-				Attributes:  tfsdk.SetNestedAttributes(attrs, tfsdk.SetNestedAttributesOptions{}),
+				Attributes:  tfsdk.SetNestedAttributes(attrs),
 				Computed:    true,
 			},
 		},
