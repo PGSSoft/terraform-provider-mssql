@@ -80,7 +80,7 @@ func TestExec(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	defer db.Close()
 	require.NoError(t, err, "creating SQL mock")
-	c := connection{db: db}
+	c := connection{conn: db}
 	diags := diag.Diagnostics{}
 	ctx := utils.WithDiagnostics(context.Background(), &diags)
 

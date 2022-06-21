@@ -18,17 +18,19 @@ type DatabaseSettings struct {
 type DatabaseId int
 
 type Database interface {
+	GetConnection(context.Context) Connection
 	GetId(context.Context) DatabaseId
 	Exists(context.Context) bool
 	GetSettings(context.Context) DatabaseSettings
 	Rename(_ context.Context, name string)
 	SetCollation(_ context.Context, collation string)
 	Drop(context.Context)
+	connect(context.Context) *sql.DB
 }
 
 type database struct {
-	connection
-	id DatabaseId
+	conn connection
+	id   DatabaseId
 }
 
 func (c connection) CreateDatabase(ctx context.Context, settings DatabaseSettings) Database {
@@ -49,13 +51,13 @@ func (c connection) CreateDatabase(ctx context.Context, settings DatabaseSetting
 }
 
 func (c connection) GetDatabase(_ context.Context, id DatabaseId) Database {
-	return &database{connection: c, id: id}
+	return &database{conn: c, id: id}
 }
 
 func (c connection) GetDatabaseByName(ctx context.Context, name string) Database {
 	id := DatabaseId(0)
 
-	if err := c.db.QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
+	if err := c.conn.QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
@@ -67,11 +69,11 @@ func (c connection) GetDatabases(ctx context.Context) map[DatabaseId]Database {
 	const errorSummary = "Failed to retrieve list of DBs"
 	result := map[DatabaseId]Database{}
 
-	switch rows, err := c.db.QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
+	switch rows, err := c.conn.QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
 	case sql.ErrNoRows: // ignore
 	case nil:
 		for rows.Next() {
-			var db = database{connection: c}
+			var db = database{conn: c}
 			err = rows.Scan(&db.id)
 			if err != nil {
 				utils.AddError(ctx, errorSummary, err)
@@ -83,6 +85,10 @@ func (c connection) GetDatabases(ctx context.Context) map[DatabaseId]Database {
 	}
 
 	return result
+}
+
+func (db database) GetConnection(context.Context) Connection {
+	return db.conn
 }
 
 func (db database) GetId(context.Context) DatabaseId {
@@ -113,21 +119,46 @@ func (db database) GetSettings(ctx context.Context) DatabaseSettings {
 
 func (db *database) Rename(ctx context.Context, name string) {
 	settings := db.GetSettings(ctx)
-	db.connection.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] MODIFY NAME = %s", settings.Name, name))
+	db.conn.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] MODIFY NAME = %s", settings.Name, name))
 }
 
 func (db database) SetCollation(ctx context.Context, collation string) {
 	settings := db.GetSettings(ctx)
-	db.connection.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] COLLATE %s", settings.Name, collation))
+	db.conn.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] COLLATE %s", settings.Name, collation))
 }
 
 func (db database) Drop(ctx context.Context) {
 	settings := db.GetSettings(ctx)
-	db.connection.exec(ctx, fmt.Sprintf("DROP DATABASE [%s]", settings.Name))
+	db.conn.exec(ctx, fmt.Sprintf("DROP DATABASE [%s]", settings.Name))
 }
 
 func (db database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
 	var settings DatabaseSettings
-	err := db.connection.db.QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).Scan(&settings.Name, &settings.Collation)
+	err := db.conn.conn.QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).Scan(&settings.Name, &settings.Collation)
 	return settings, err
+}
+
+func (db database) connect(ctx context.Context) *sql.DB {
+	settings := db.GetSettings(ctx)
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	connDetails := db.conn.connDetails
+	connDetails.Database = settings.Name
+
+	connStr, diags := connDetails.getConnectionString(ctx)
+	utils.AppendDiagnostics(ctx, diags...)
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	conn, err := sql.Open(connDetails.Auth.getDriverName(), connStr)
+
+	if err != nil {
+		utils.AddError(ctx, "Failed to open DB connection", err)
+		return nil
+	}
+
+	return conn
 }

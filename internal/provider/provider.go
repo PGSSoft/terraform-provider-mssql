@@ -140,6 +140,7 @@ func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, 
 	return map[string]tfsdk.ResourceType{
 		"mssql_database":  DatabaseResourceType{},
 		"mssql_sql_login": SqlLoginResourceType{},
+		"mssql_sql_user":  SqlUserResourceType{},
 	}, nil
 }
 
@@ -149,6 +150,8 @@ func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceTy
 		"mssql_databases":  DatabaseListDataSourceType{},
 		"mssql_sql_login":  SqlLoginDataSourceType{},
 		"mssql_sql_logins": SqlLoginListDataSourceType{},
+		"mssql_sql_user":   SqlUserDataSourceType{},
+		"mssql_sql_users":  SqlUserListDataSourceType{},
 	}, nil
 }
 

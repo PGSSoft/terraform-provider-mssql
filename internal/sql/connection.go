@@ -17,8 +17,9 @@ type ConnectionAuth interface {
 }
 
 type ConnectionDetails struct {
-	Host string
-	Auth ConnectionAuth
+	Host     string
+	Database string
+	Auth     ConnectionAuth
 }
 
 type Connection interface {
@@ -33,7 +34,8 @@ type Connection interface {
 }
 
 type connection struct {
-	db *sql.DB
+	connDetails ConnectionDetails
+	conn        *sql.DB
 }
 
 func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnostics) {
@@ -44,12 +46,16 @@ func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnost
 		diags.AddError("Could not connect to SQL endpoint", err.Error())
 	}
 
-	return connection{db: db}, diags
+	return connection{conn: db, connDetails: cd}, diags
 }
 
 func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, diag.Diagnostics) {
 	query := url.Values{
 		"app name": []string{"Terraform - mssql provider"},
+	}
+
+	if cd.Database != "" {
+		query.Set("database", cd.Database)
 	}
 
 	u := url.URL{
@@ -64,7 +70,7 @@ func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, di
 }
 
 func (c connection) exec(ctx context.Context, query string, args ...any) sql.Result {
-	res, err := c.db.ExecContext(ctx, query, args...)
+	res, err := c.conn.ExecContext(ctx, query, args...)
 
 	if err != nil {
 		utils.AddError(ctx, "Could not execute SQL", err)

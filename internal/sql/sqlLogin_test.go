@@ -254,10 +254,6 @@ func (s *SqlLoginTestSuite) expectSqlLoginNamesByIdQuery() *sqlmock.ExpectedQuer
 	return expectExactQuery(s.mock, "SELECT [name] FROM sys.sql_logins WHERE CONVERT(VARCHAR(85), [sid], 1) = @p1")
 }
 
-func (s *SqlLoginTestSuite) expectSqlLoginNameLookupQuery() *sqlmock.ExpectedQuery {
-	return expectExactQuery(s.mock, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))")
-}
-
 func (s *SqlLoginTestSuite) expectSettingsQuery() *sqlmock.ExpectedQuery {
 	return expectExactQuery(s.mock, `SELECT 
     [name], 
