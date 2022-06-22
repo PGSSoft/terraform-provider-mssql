@@ -69,7 +69,7 @@ type sqlUserResourceBase struct {
 
 func (r sqlUserResourceBase) getDb(ctx context.Context, dbId string) sql.Database {
 	if dbId == "" {
-		return r.Db.GetDatabaseByName(ctx, "master")
+		return sql.GetDatabaseByName(ctx, r.Db, "master")
 	}
 
 	id, err := strconv.Atoi(dbId)
@@ -78,5 +78,5 @@ func (r sqlUserResourceBase) getDb(ctx context.Context, dbId string) sql.Databas
 		return nil
 	}
 
-	return r.Db.GetDatabase(ctx, sql.DatabaseId(id))
+	return sql.GetDatabase(ctx, r.Db, sql.DatabaseId(id))
 }

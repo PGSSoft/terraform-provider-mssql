@@ -29,7 +29,7 @@ func CreateUser(ctx context.Context, db Database, settings UserSettings) User {
 		sqlStat := strings.Builder{}
 		sqlStat.WriteString(fmt.Sprintf("CREATE USER [%s]", settings.Name))
 
-		loginName := db.GetConnection(ctx).GetSqlLogin(ctx, settings.LoginId).getName(ctx)
+		loginName := GetSqlLogin(ctx, db.GetConnection(ctx), settings.LoginId).getName(ctx)
 		if utils.HasError(ctx) {
 			return nil
 		}
@@ -143,7 +143,7 @@ func (u user) UpdateSettings(ctx context.Context, settings UserSettings) {
 			return nil
 		}
 
-		loginName := u.db.GetConnection(ctx).GetSqlLogin(ctx, settings.LoginId).getName(ctx)
+		loginName := GetSqlLogin(ctx, u.db.GetConnection(ctx), settings.LoginId).getName(ctx)
 		if utils.HasError(ctx) {
 			return nil
 		}

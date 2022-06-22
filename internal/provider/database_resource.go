@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -64,7 +65,7 @@ func (d databaseResource) Create(ctx context.Context, request tfsdk.CreateResour
 		return
 	}
 
-	db := d.Db.CreateDatabase(ctx, data.toSettings())
+	db := sql.CreateDatabase(ctx, d.Db, data.toSettings())
 	if utils.HasError(ctx) {
 		return
 	}
@@ -86,7 +87,7 @@ func (d databaseResource) Read(ctx context.Context, request tfsdk.ReadResourceRe
 		return
 	}
 
-	db := d.Db.GetDatabase(ctx, dbId)
+	db := sql.GetDatabase(ctx, d.Db, dbId)
 	if utils.HasError(ctx) {
 		return
 	}
@@ -115,7 +116,7 @@ func (d databaseResource) Update(ctx context.Context, request tfsdk.UpdateResour
 		return
 	}
 
-	db := d.Db.GetDatabase(ctx, dbId)
+	db := sql.GetDatabase(ctx, d.Db, dbId)
 	if utils.HasError(ctx) {
 		return
 	}
@@ -148,7 +149,7 @@ func (d databaseResource) Delete(ctx context.Context, request tfsdk.DeleteResour
 		return
 	}
 
-	db := d.Db.GetDatabase(ctx, dbId)
+	db := sql.GetDatabase(ctx, d.Db, dbId)
 	if utils.HasError(ctx) {
 		return
 	}

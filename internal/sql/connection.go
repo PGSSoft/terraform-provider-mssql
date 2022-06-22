@@ -23,14 +23,9 @@ type ConnectionDetails struct {
 }
 
 type Connection interface {
-	CreateDatabase(context.Context, DatabaseSettings) Database
-	GetDatabase(_ context.Context, id DatabaseId) Database
-	GetDatabaseByName(_ context.Context, name string) Database
-	GetDatabases(context.Context) map[DatabaseId]Database
-	CreateSqlLogin(context.Context, SqlLoginSettings) SqlLogin
-	GetSqlLogin(_ context.Context, id LoginId) SqlLogin
-	GetSqlLoginByName(_ context.Context, name string) SqlLogin
-	GetSqlLogins(_ context.Context) map[LoginId]SqlLogin
+	exec(_ context.Context, query string, args ...any) sql.Result
+	getConnectionDetails(context.Context) ConnectionDetails
+	getSqlConnection(context.Context) *sql.DB
 }
 
 type connection struct {
@@ -77,4 +72,12 @@ func (c connection) exec(ctx context.Context, query string, args ...any) sql.Res
 	}
 
 	return res
+}
+
+func (c connection) getConnectionDetails(context.Context) ConnectionDetails {
+	return c.connDetails
+}
+
+func (c connection) getSqlConnection(context.Context) *sql.DB {
+	return c.conn
 }

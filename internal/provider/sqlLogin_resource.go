@@ -151,7 +151,7 @@ func (l SqlLoginResource) Create(ctx context.Context, request tfsdk.CreateResour
 		return
 	}
 
-	login := l.Db.CreateSqlLogin(ctx, data.toSettings(ctx))
+	login := sql.CreateSqlLogin(ctx, l.Db, data.toSettings(ctx))
 	if utils.HasError(ctx) {
 		return
 	}
@@ -172,7 +172,7 @@ func (l SqlLoginResource) Read(ctx context.Context, request tfsdk.ReadResourceRe
 		return
 	}
 
-	login := l.Db.GetSqlLogin(ctx, sql.LoginId(data.Id.Value))
+	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
 	if utils.HasError(ctx) {
 		return
 	}
@@ -202,7 +202,7 @@ func (l SqlLoginResource) Update(ctx context.Context, request tfsdk.UpdateResour
 		return
 	}
 
-	login := l.Db.GetSqlLogin(ctx, sql.LoginId(data.Id.Value))
+	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
 	if utils.HasError(ctx) {
 		return
 	}
@@ -225,7 +225,7 @@ func (l SqlLoginResource) Delete(ctx context.Context, request tfsdk.DeleteResour
 		return
 	}
 
-	login := l.Db.GetSqlLogin(ctx, sql.LoginId(data.Id.Value))
+	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
 	if utils.HasError(ctx) {
 		return
 	}

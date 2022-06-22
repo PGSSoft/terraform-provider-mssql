@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -54,7 +55,7 @@ type databaseList struct {
 func (l databaseList) Read(ctx context.Context, _ tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
-	dbs := l.Db.GetDatabases(ctx)
+	dbs := sql.GetDatabases(ctx, l.Db)
 	if utils.HasError(ctx) {
 		return
 	}
