@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -51,10 +52,10 @@ type sqlLoginList struct {
 	Resource
 }
 
-func (l sqlLoginList) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (l sqlLoginList) Read(ctx context.Context, _ tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
-	logins := l.Db.GetSqlLogins(ctx)
+	logins := sql.GetSqlLogins(ctx, l.Db)
 	if utils.HasError(ctx) {
 		return
 	}

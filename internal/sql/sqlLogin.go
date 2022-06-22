@@ -22,7 +22,7 @@ type SqlLoginSettings struct {
 	CheckPasswordPolicy     bool
 }
 
-func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn connection) string {
+func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn Connection) string {
 	builder := strings.Builder{}
 	builder.WriteString(fmt.Sprintf("PASSWORD='%s'", s.Password))
 
@@ -47,7 +47,7 @@ func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn connection) str
 
 	var defaultDatabaseName string
 	if s.DefaultDatabaseId != DatabaseId(0) {
-		err := conn.conn.QueryRowContext(ctx, "SELECT DB_NAME(@p1)", s.DefaultDatabaseId).Scan(&defaultDatabaseName)
+		err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_NAME(@p1)", s.DefaultDatabaseId).Scan(&defaultDatabaseName)
 		if err != nil {
 			utils.AddError(ctx, "Failed to retrieve DB name for given ID", err)
 			return ""
@@ -63,6 +63,20 @@ func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn connection) str
 	return builder.String()
 }
 
+func getLoginId(ctx context.Context, conn Connection, loginName string) LoginId {
+	var id sql.NullString
+	err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT CONVERT(VARCHAR(85), SUSER_SID(@p1), 1)", loginName).Scan(&id)
+	if err != nil {
+		utils.AddError(ctx, "Failed to retrieve login ID", err)
+	}
+
+	if id.Valid {
+		return LoginId(id.String)
+	} else {
+		return NullLoginId
+	}
+}
+
 type SqlLogin interface {
 	GetId(context.Context) LoginId
 	Exists(context.Context) bool
@@ -74,7 +88,55 @@ type SqlLogin interface {
 
 type sqlLogin struct {
 	id   LoginId
-	conn connection
+	conn Connection
+}
+
+func GetSqlLogin(_ context.Context, conn Connection, id LoginId) SqlLogin {
+	return sqlLogin{conn: conn, id: id}
+}
+
+func GetSqlLoginByName(ctx context.Context, conn Connection, name string) SqlLogin {
+	id := getLoginId(ctx, conn, name)
+	if utils.HasError(ctx) || id == NullLoginId {
+		return nil
+	}
+
+	return sqlLogin{conn: conn, id: id}
+}
+
+func GetSqlLogins(ctx context.Context, conn Connection) map[LoginId]SqlLogin {
+	const errorSummary = "Failed to retrieve list of SQL logins"
+	result := map[LoginId]SqlLogin{}
+
+	switch rows, err := conn.getSqlConnection(ctx).QueryContext(ctx, "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins"); err {
+	case sql.ErrNoRows: // ignore
+	case nil:
+		for rows.Next() {
+			var login = sqlLogin{conn: conn}
+			err := rows.Scan(&login.id)
+			if err != nil {
+				utils.AddError(ctx, errorSummary, err)
+			}
+			result[login.id] = login
+		}
+	default:
+		utils.AddError(ctx, errorSummary, err)
+	}
+
+	return result
+}
+
+func CreateSqlLogin(ctx context.Context, conn Connection, settings SqlLoginSettings) SqlLogin {
+	sqlOptions := settings.toSqlOptions(ctx, conn)
+	if utils.HasError(ctx) {
+		return nil
+	}
+	conn.exec(ctx, fmt.Sprintf("CREATE LOGIN [%s] WITH %s", settings.Name, sqlOptions))
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	return GetSqlLoginByName(ctx, conn, settings.Name)
 }
 
 func (l sqlLogin) GetId(context.Context) LoginId {
@@ -84,7 +146,7 @@ func (l sqlLogin) GetId(context.Context) LoginId {
 func (l sqlLogin) Exists(ctx context.Context) bool {
 	const query = "SELECT [name] FROM sys.sql_logins WHERE CONVERT(VARCHAR(85), [sid], 1) = @p1"
 
-	switch err := l.conn.conn.QueryRowContext(ctx, query, l.id).Err(); err {
+	switch err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, query, l.id).Err(); err {
 	case sql.ErrNoRows:
 		return false
 	case nil:
@@ -97,7 +159,7 @@ func (l sqlLogin) Exists(ctx context.Context) bool {
 
 func (l sqlLogin) GetSettings(ctx context.Context) SqlLoginSettings {
 	var settings SqlLoginSettings
-	err := l.conn.conn.QueryRowContext(ctx, `
+	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, `
 SELECT 
     [name], 
     [password_hash], 
@@ -149,72 +211,10 @@ func (l sqlLogin) Drop(ctx context.Context) {
 
 func (l sqlLogin) getName(ctx context.Context) string {
 	var name string
-	err := l.conn.conn.QueryRowContext(ctx, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))", l.id).Scan(&name)
+	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))", l.id).Scan(&name)
 	if err != nil {
 		utils.AddError(ctx, "Failed to retrieve current login name", err)
 	}
 
 	return name
-}
-
-func (c connection) getLoginId(ctx context.Context, loginName string) LoginId {
-	var id sql.NullString
-	err := c.conn.QueryRowContext(ctx, "SELECT CONVERT(VARCHAR(85), SUSER_SID(@p1), 1)", loginName).Scan(&id)
-	if err != nil {
-		utils.AddError(ctx, "Failed to retrieve login ID", err)
-	}
-
-	if id.Valid {
-		return LoginId(id.String)
-	} else {
-		return NullLoginId
-	}
-}
-
-func (c connection) CreateSqlLogin(ctx context.Context, settings SqlLoginSettings) SqlLogin {
-	sqlOptions := settings.toSqlOptions(ctx, c)
-	if utils.HasError(ctx) {
-		return nil
-	}
-	c.exec(ctx, fmt.Sprintf("CREATE LOGIN [%s] WITH %s", settings.Name, sqlOptions))
-	if utils.HasError(ctx) {
-		return nil
-	}
-
-	return c.GetSqlLoginByName(ctx, settings.Name)
-}
-
-func (c connection) GetSqlLogin(_ context.Context, id LoginId) SqlLogin {
-	return sqlLogin{conn: c, id: id}
-}
-
-func (c connection) GetSqlLoginByName(ctx context.Context, name string) SqlLogin {
-	id := c.getLoginId(ctx, name)
-	if utils.HasError(ctx) || id == NullLoginId {
-		return nil
-	}
-
-	return sqlLogin{conn: c, id: id}
-}
-
-func (c connection) GetSqlLogins(ctx context.Context) map[LoginId]SqlLogin {
-	const errorSummary = "Failed to retrieve list of SQL logins"
-	result := map[LoginId]SqlLogin{}
-
-	switch rows, err := c.conn.QueryContext(ctx, "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins"); err {
-	case sql.ErrNoRows: // ignore
-	case nil:
-		for rows.Next() {
-			var login = sqlLogin{conn: c}
-			err := rows.Scan(&login.id)
-			if err != nil {
-				utils.AddError(ctx, errorSummary, err)
-			}
-			result[login.id] = login
-		}
-	default:
-		utils.AddError(ctx, errorSummary, err)
-	}
-
-	return result
 }

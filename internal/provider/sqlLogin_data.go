@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -45,7 +46,7 @@ func (d sqlLoginData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequ
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlLoginDataSourceData](ctx, request.Config)
 
-	login := d.Db.GetSqlLoginByName(ctx, data.Name.Value)
+	login := sql.GetSqlLoginByName(ctx, d.Db, data.Name.Value)
 
 	if login == nil || !login.Exists(ctx) {
 		response.State.RemoveResource(ctx)

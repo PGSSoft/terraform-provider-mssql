@@ -29,11 +29,11 @@ type Database interface {
 }
 
 type database struct {
-	conn connection
+	conn Connection
 	id   DatabaseId
 }
 
-func (c connection) CreateDatabase(ctx context.Context, settings DatabaseSettings) Database {
+func CreateDatabase(ctx context.Context, conn Connection, settings DatabaseSettings) Database {
 	var query strings.Builder
 	query.WriteString(fmt.Sprintf("CREATE DATABASE [%s]", settings.Name))
 
@@ -41,39 +41,39 @@ func (c connection) CreateDatabase(ctx context.Context, settings DatabaseSetting
 		query.WriteString(fmt.Sprintf(" COLLATE %s", settings.Collation))
 	}
 
-	c.exec(ctx, query.String())
+	conn.exec(ctx, query.String())
 
 	if utils.HasError(ctx) {
 		return nil
 	}
 
-	return c.GetDatabaseByName(ctx, settings.Name)
+	return GetDatabaseByName(ctx, conn, settings.Name)
 }
 
-func (c connection) GetDatabase(_ context.Context, id DatabaseId) Database {
-	return &database{conn: c, id: id}
+func GetDatabase(_ context.Context, conn Connection, id DatabaseId) Database {
+	return &database{conn: conn, id: id}
 }
 
-func (c connection) GetDatabaseByName(ctx context.Context, name string) Database {
+func GetDatabaseByName(ctx context.Context, conn Connection, name string) Database {
 	id := DatabaseId(0)
 
-	if err := c.conn.QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
+	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
 
-	return c.GetDatabase(ctx, id)
+	return GetDatabase(ctx, conn, id)
 }
 
-func (c connection) GetDatabases(ctx context.Context) map[DatabaseId]Database {
+func GetDatabases(ctx context.Context, conn Connection) map[DatabaseId]Database {
 	const errorSummary = "Failed to retrieve list of DBs"
 	result := map[DatabaseId]Database{}
 
-	switch rows, err := c.conn.QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
+	switch rows, err := conn.getSqlConnection(ctx).QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
 	case sql.ErrNoRows: // ignore
 	case nil:
 		for rows.Next() {
-			var db = database{conn: c}
+			var db = database{conn: conn}
 			err = rows.Scan(&db.id)
 			if err != nil {
 				utils.AddError(ctx, errorSummary, err)
@@ -134,7 +134,9 @@ func (db database) Drop(ctx context.Context) {
 
 func (db database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
 	var settings DatabaseSettings
-	err := db.conn.conn.QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).Scan(&settings.Name, &settings.Collation)
+	err := db.conn.getSqlConnection(ctx).
+		QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
+		Scan(&settings.Name, &settings.Collation)
 	return settings, err
 }
 
@@ -144,7 +146,7 @@ func (db database) connect(ctx context.Context) *sql.DB {
 		return nil
 	}
 
-	connDetails := db.conn.connDetails
+	connDetails := db.conn.getConnectionDetails(ctx)
 	connDetails.Database = settings.Name
 
 	connStr, diags := connDetails.getConnectionString(ctx)

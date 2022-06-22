@@ -29,7 +29,7 @@ func (s *SqlLoginTestSuite) TestGetSqlLoginByName() {
 	const loginId = "0x12541251"
 	s.expectSqlLoginIdQuery("test_login").WillReturnRows(newRows("ID").AddRow(loginId))
 
-	login := s.conn.GetSqlLoginByName(s.ctx, "test_login")
+	login := GetSqlLoginByName(s.ctx, s.conn, "test_login")
 
 	s.Equal(LoginId(loginId), login.GetId(s.ctx), "DB ID")
 }
@@ -38,7 +38,7 @@ func (s *SqlLoginTestSuite) TestGetSqlLoginByNameError() {
 	err := errors.New("test DB error")
 	s.expectSqlLoginIdQuery("test_login").WillReturnError(err)
 
-	login := s.conn.GetSqlLoginByName(s.ctx, "test_login")
+	login := GetSqlLoginByName(s.ctx, s.conn, "test_login")
 
 	s.Nil(login, "login")
 	s.verifyError(err)
@@ -52,7 +52,7 @@ func (s *SqlLoginTestSuite) TestGetMultipleSqlLogins() {
 	}
 	s.expectSqlLoginsQuery().WillReturnRows(rows)
 
-	logins := s.conn.GetSqlLogins(s.ctx)
+	logins := GetSqlLogins(s.ctx, s.conn)
 
 	s.Equal(2, len(logins), "Logins count")
 	for _, expectedId := range loginIds {
@@ -65,14 +65,14 @@ func (s *SqlLoginTestSuite) TestGetMultipleSqlLogins() {
 func (s *SqlLoginTestSuite) TestGetLoginsNoRows() {
 	s.expectSqlLoginsQuery().WillReturnError(sql.ErrNoRows)
 
-	s.Equal(0, len(s.conn.GetSqlLogins(s.ctx)), "Expected empty logins slice")
+	s.Equal(0, len(GetSqlLogins(s.ctx, s.conn)), "Expected empty logins slice")
 }
 
 func (s *SqlLoginTestSuite) TestGetLoginsError() {
 	err := errors.New("test_error")
 	s.expectSqlLoginsQuery().WillReturnError(err)
 
-	s.conn.GetSqlLogins(s.ctx)
+	GetSqlLogins(s.ctx, s.conn)
 
 	s.verifyError(err)
 }
@@ -102,7 +102,7 @@ func (s *SqlLoginTestSuite) TestCreateSqlLogin() {
 			expectExactExec(s.mock, tc.sql).WillReturnResult(sqlmock.NewResult(0, 1))
 			s.expectSqlLoginIdQuery(tc.settings.Name).WillReturnRows(newRows("id").AddRow(id))
 
-			login := s.conn.CreateSqlLogin(s.ctx, tc.settings)
+			login := CreateSqlLogin(s.ctx, s.conn, tc.settings)
 
 			s.Require().NotNil(login)
 			s.Equal(LoginId(id), login.GetId(s.ctx), "Login ID")
@@ -118,7 +118,7 @@ func (s *SqlLoginTestSuite) TestCreateSqlLoginDefaultDb() {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	s.expectSqlLoginIdQuery("test_login").WillReturnRows(newRows("id").AddRow(id))
 
-	login := s.conn.CreateSqlLogin(s.ctx, settings)
+	login := CreateSqlLogin(s.ctx, s.conn, settings)
 
 	s.Require().NotNil(login)
 	s.Equal(LoginId(id), login.GetId(s.ctx), "Login ID")
@@ -129,7 +129,7 @@ func (s *SqlLoginTestSuite) TestCreateSqlLoginError() {
 	err := errors.New("test_error")
 	expectExactExec(s.mock, "CREATE LOGIN [test_login] WITH PASSWORD='test_password', CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF").WillReturnError(err)
 
-	login := s.conn.CreateSqlLogin(s.ctx, settings)
+	login := CreateSqlLogin(s.ctx, s.conn, settings)
 
 	s.Nil(login, "login")
 	s.verifyError(err)

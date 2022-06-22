@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -48,7 +49,7 @@ func (d databaseData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequ
 		return
 	}
 
-	db := d.Db.GetDatabaseByName(ctx, data.Name.Value)
+	db := sql.GetDatabaseByName(ctx, d.Db, data.Name.Value)
 
 	if db == nil || !db.Exists(ctx) {
 		response.State.RemoveResource(ctx)
