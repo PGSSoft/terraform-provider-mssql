@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework v0.9.0
 	github.com/hashicorp/terraform-plugin-go v0.9.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.17.0
-	github.com/stretchr/testify v1.7.3
+	github.com/stretchr/testify v1.8.0
 )
 
 require (
