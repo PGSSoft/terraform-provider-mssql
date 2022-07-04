@@ -48,7 +48,7 @@ func (s sqlUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceReque
 		return
 	}
 
-	db := s.getDb(ctx, data.DatabaseId.Value)
+	db := getResourceDb(ctx, s.Db, data.DatabaseId.Value)
 	if utils.HasError(ctx) {
 		return
 	}

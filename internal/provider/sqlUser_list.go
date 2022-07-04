@@ -72,7 +72,7 @@ func (s sqlUserList) Read(ctx context.Context, request tfsdk.ReadDataSourceReque
 		return
 	}
 
-	db := s.getDb(ctx, data.DatabaseId.Value)
+	db := getResourceDb(ctx, s.Db, data.DatabaseId.Value)
 	dbId := db.GetId(ctx)
 	data.DatabaseId = types.String{Value: fmt.Sprint(dbId)}
 	data.Id = data.DatabaseId

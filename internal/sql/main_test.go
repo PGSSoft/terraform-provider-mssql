@@ -67,6 +67,16 @@ func (s *SqlTestSuite) expectSqlLoginNameLookupQuery() *sqlmock.ExpectedQuery {
 	return expectExactQuery(s.mock, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))")
 }
 
+func (s *SqlTestSuite) expectDatabasePrincipalIdLookupQuery(name string, id int) *sqlmock.ExpectedQuery {
+	return expectExactQuery(s.mock, "SELECT DATABASE_PRINCIPAL_ID(@p1)").WithArgs(name).WillReturnRows(newRows("id").AddRow(id))
+}
+
+func (s *SqlTestSuite) expectUserNameQuery(id int, name string) {
+	expectExactQuery(s.mock, "SELECT USER_NAME(@p1)").
+		WithArgs(id).
+		WillReturnRows(newRows("id").AddRow(name))
+}
+
 var _ Database = &dbMock{}
 
 type dbMock struct {

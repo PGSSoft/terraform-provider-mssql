@@ -24,34 +24,10 @@ func (rt SqlUserResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	return tfsdk.Schema{
 		Description: "Manages database-level user, based on SQL login.",
 		Attributes: map[string]tfsdk.Attribute{
-			"id": func() tfsdk.Attribute {
-				attr := sqlUserAttributes["id"]
-				attr.Computed = true
-				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-					tfsdk.UseStateForUnknown(),
-				}
-				return attr
-			}(),
-			"name": func() tfsdk.Attribute {
-				attr := sqlUserAttributes["name"]
-				attr.Required = true
-				return attr
-			}(),
-			"database_id": func() tfsdk.Attribute {
-				attr := sqlUserAttributes["database_id"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += " Defaults to ID of `master`."
-				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-					tfsdk.RequiresReplace(),
-				}
-				return attr
-			}(),
-			"login_id": func() tfsdk.Attribute {
-				attr := sqlUserAttributes["login_id"]
-				attr.Required = true
-				return attr
-			}(),
+			"id":          toResourceId(sqlUserAttributes["id"]),
+			"name":        toRequired(sqlUserAttributes["name"]),
+			"database_id": databaseIdResourceAttribute,
+			"login_id":    toRequired(sqlUserAttributes["login_id"]),
 		},
 	}, nil
 }
@@ -73,7 +49,7 @@ func (r sqlUserResource) Create(ctx context.Context, request tfsdk.CreateResourc
 		return
 	}
 
-	db := r.getDb(ctx, data.DatabaseId.Value)
+	db := getResourceDb(ctx, r.Db, data.DatabaseId.Value)
 	if utils.HasError(ctx) {
 		return
 	}
@@ -159,7 +135,7 @@ func (r sqlUserResource) getUser(ctx context.Context, data sqlUserResourceData) 
 		return nil
 	}
 
-	db := r.getDb(ctx, idSegments[0])
+	db := getResourceDb(ctx, r.Db, idSegments[0])
 	if utils.HasError(ctx) {
 		return nil
 	}

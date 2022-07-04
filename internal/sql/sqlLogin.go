@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-type LoginId string
-
 const NullLoginId LoginId = "<null>"
 
 type SqlLoginSettings struct {

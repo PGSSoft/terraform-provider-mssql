@@ -66,7 +66,7 @@ func (s *UserTestSuite) TestGetSettings() {
 }
 
 func (s *UserTestSuite) TestDrop() {
-	s.expectUserNameQuery("test_drop_name")
+	s.expectUserNameQuery(int(s.user.id), "test_drop_name")
 	expectExactExec(s.mock, "DROP USER [test_drop_name]").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -75,18 +75,12 @@ func (s *UserTestSuite) TestDrop() {
 
 func (s *UserTestSuite) TestUpdateSettings() {
 	newSettings := UserSettings{Name: "new_name", LoginId: "new_login_id"}
-	s.expectUserNameQuery("test_update_settings")
+	s.expectUserNameQuery(int(s.user.id), "test_update_settings")
 	s.expectSqlLoginNameLookupQuery().WithArgs(newSettings.LoginId).WillReturnRows(newRows("name").AddRow("new_login_name"))
 	expectExactExec(s.mock, "ALTER USER [test_update_settings] WITH NAME=[%s], LOGIN=[%s]", newSettings.Name, "new_login_name").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	s.user.UpdateSettings(s.ctx, newSettings)
-}
-
-func (s *UserTestSuite) expectUserNameQuery(name string) {
-	expectExactQuery(s.mock, "SELECT USER_NAME(@p1)").
-		WithArgs(s.user.id).
-		WillReturnRows(newRows("id").AddRow(name))
 }
 
 func (s *UserTestSuite) expectUserIdLookupQuery(name string, id int) {

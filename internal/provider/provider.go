@@ -138,20 +138,23 @@ func (p *provider) Configure(ctx context.Context, request tfsdk.ConfigureProvide
 
 func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
 	return map[string]tfsdk.ResourceType{
-		"mssql_database":  DatabaseResourceType{},
-		"mssql_sql_login": SqlLoginResourceType{},
-		"mssql_sql_user":  SqlUserResourceType{},
+		"mssql_database":      DatabaseResourceType{},
+		"mssql_sql_login":     SqlLoginResourceType{},
+		"mssql_sql_user":      SqlUserResourceType{},
+		"mssql_database_role": DatabaseRoleResourceType{},
 	}, nil
 }
 
 func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
 	return map[string]tfsdk.DataSourceType{
-		"mssql_database":   DatabaseDataSourceType{},
-		"mssql_databases":  DatabaseListDataSourceType{},
-		"mssql_sql_login":  SqlLoginDataSourceType{},
-		"mssql_sql_logins": SqlLoginListDataSourceType{},
-		"mssql_sql_user":   SqlUserDataSourceType{},
-		"mssql_sql_users":  SqlUserListDataSourceType{},
+		"mssql_database":       DatabaseDataSourceType{},
+		"mssql_databases":      DatabaseListDataSourceType{},
+		"mssql_sql_login":      SqlLoginDataSourceType{},
+		"mssql_sql_logins":     SqlLoginListDataSourceType{},
+		"mssql_sql_user":       SqlUserDataSourceType{},
+		"mssql_sql_users":      SqlUserListDataSourceType{},
+		"mssql_database_role":  DatabaseRoleDataSourceType{},
+		"mssql_database_roles": DatabaseRoleListDataSourceType{},
 	}, nil
 }
 

@@ -1,14 +1,11 @@
 package provider
 
 import (
-	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"strconv"
 )
 
 var sqlUserAttributes = map[string]tfsdk.Attribute{
@@ -21,10 +18,7 @@ var sqlUserAttributes = map[string]tfsdk.Attribute{
 		Type:                types.StringType,
 		Validators:          validators.UserNameValidators,
 	},
-	"database_id": {
-		MarkdownDescription: fmt.Sprintf("ID of database. Can be retrieved using `mssql_database` or `SELECT DB_ID('<db_name>')`."),
-		Type:                types.StringType,
-	},
+	"database_id": databaseIdAttribute,
 	"login_id": {
 		MarkdownDescription: "SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.",
 		Type:                types.StringType,
@@ -65,18 +59,4 @@ func (d sqlUserResourceData) withIds(dbId sql.DatabaseId, userId sql.UserId) sql
 
 type sqlUserResourceBase struct {
 	Resource
-}
-
-func (r sqlUserResourceBase) getDb(ctx context.Context, dbId string) sql.Database {
-	if dbId == "" {
-		return sql.GetDatabaseByName(ctx, r.Db, "master")
-	}
-
-	id, err := strconv.Atoi(dbId)
-	if err != nil {
-		utils.AddError(ctx, "Failed to convert DB ID", err)
-		return nil
-	}
-
-	return sql.GetDatabase(ctx, r.Db, sql.DatabaseId(id))
 }
