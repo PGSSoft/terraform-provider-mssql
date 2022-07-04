@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-type UserId int
-
 type UserSettings struct {
 	Name    string
 	LoginId LoginId

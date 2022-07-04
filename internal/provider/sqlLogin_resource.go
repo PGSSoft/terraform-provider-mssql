@@ -71,19 +71,8 @@ func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	return tfsdk.Schema{
 		Description: "Manages single login.",
 		Attributes: map[string]tfsdk.Attribute{
-			"id": func() tfsdk.Attribute {
-				attr := sqlLoginAttributes["id"]
-				attr.Computed = true
-				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-					tfsdk.UseStateForUnknown(),
-				}
-				return attr
-			}(),
-			"name": func() tfsdk.Attribute {
-				attr := sqlLoginAttributes["name"]
-				attr.Required = true
-				return attr
-			}(),
+			"id":   toResourceId(sqlLoginAttributes["id"]),
+			"name": toRequired(sqlLoginAttributes["name"]),
 			"password": {
 				MarkdownDescription: "Password for the login. Must follow strong password policies defined for SQL server. " +
 					"Passwords are case-sensitive, length must be 8-128 chars, can include all characters except `'` or `name`.\n\n" +

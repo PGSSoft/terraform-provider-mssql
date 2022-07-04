@@ -15,8 +15,6 @@ type DatabaseSettings struct {
 	Collation string
 }
 
-type DatabaseId int
-
 type Database interface {
 	GetConnection(context.Context) Connection
 	GetId(context.Context) DatabaseId

@@ -24,19 +24,8 @@ func (d DatabaseResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	return tfsdk.Schema{
 		Description: "Manages single database.",
 		Attributes: map[string]tfsdk.Attribute{
-			"id": func() tfsdk.Attribute {
-				attr := databaseAttributes["id"]
-				attr.Computed = true
-				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-					tfsdk.UseStateForUnknown(),
-				}
-				return attr
-			}(),
-			"name": func() tfsdk.Attribute {
-				attr := databaseAttributes["name"]
-				attr.Required = true
-				return attr
-			}(),
+			"id":   toResourceId(databaseAttributes["id"]),
+			"name": toRequired(databaseAttributes["name"]),
 			"collation": func() tfsdk.Attribute {
 				attr := databaseAttributes["collation"]
 				attr.Optional = true

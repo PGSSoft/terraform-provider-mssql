@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/url"
 	"os"
@@ -172,10 +173,23 @@ func openDBConnection() *sql2.DB {
 	return conn
 }
 
+func withDBConnection(f func(conn *sql2.DB)) {
+	conn := openDBConnection()
+	defer conn.Close()
+	f(conn)
+}
+
 func sqlCheck(check func(db *sql2.DB) error) resource.TestCheckFunc {
 	return func(*terraform.State) error {
 		db := openDBConnection()
 		defer db.Close()
 		return check(db)
 	}
+}
+
+func createDB(t *testing.T, name string) {
+	withDBConnection(func(conn *sql2.DB) {
+		_, err := conn.Exec(fmt.Sprintf("CREATE DATABASE [%s]", name))
+		require.NoError(t, err, "creating DB")
+	})
 }
