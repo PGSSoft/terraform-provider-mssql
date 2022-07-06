@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"
@@ -25,11 +26,11 @@ data "mssql_database_role" %[1]q {
 `, resourceName, roleName)
 	}
 
-	var roleResourceId, ownerResourceId string
+	var roleResourceId, ownerResourceId, roleMemberResourceId, userMemberResourceId string
 	var dbId string
 
+	formatId := func(id int) string { return fmt.Sprintf("%s/%d", dbId, id) }
 	setIds := func(roleId int, ownerId int) {
-		formatId := func(id int) string { return fmt.Sprintf("%s/%d", dbId, id) }
 		roleResourceId = formatId(roleId)
 		ownerResourceId = formatId(ownerId)
 	}
@@ -53,21 +54,51 @@ data "mssql_database_role" %[1]q {
 			{
 				PreConfig: func() {
 					withDBConnection(func(conn *sql.DB) {
-						var roleId, ownerId int
+						var roleId, ownerId, roleMemberId, userMemberId int
 
 						err := conn.QueryRow(`
 USE [db_role_data_test];
 CREATE ROLE [test_owner];
+CREATE ROLE [test_role_member];
+CREATE USER [test_user_member] WITHOUT LOGIN;
 CREATE ROLE [test_role] AUTHORIZATION [test_owner];
-SELECT DATABASE_PRINCIPAL_ID('test_role'), DATABASE_PRINCIPAL_ID('test_owner'), DB_ID();
-`).Scan(&roleId, &ownerId, &dbId)
+ALTER ROLE [test_role] ADD MEMBER [test_role_member];
+ALTER ROLE [test_role] ADD MEMBER [test_user_member];
+SELECT 
+    DATABASE_PRINCIPAL_ID('test_role'), 
+    DATABASE_PRINCIPAL_ID('test_owner'), 
+    DB_ID(), 
+    DATABASE_PRINCIPAL_ID('test_role_member'),
+    DATABASE_PRINCIPAL_ID('test_user_member');
+`).Scan(&roleId, &ownerId, &dbId, &roleMemberId, &userMemberId)
 
 						require.NoError(t, err, "creating role")
 						setIds(roleId, ownerId)
+						roleMemberResourceId = formatId(roleMemberId)
+						userMemberResourceId = formatId(userMemberId)
 					})
 				},
 				Config: newDataResource("exists", "test_role"),
-				Check:  attributesCheck("exists"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					attributesCheck("exists"),
+					func(state *terraform.State) error {
+						memberCheck := func(attrs map[string]string) resource.TestCheckFunc {
+							return resource.TestCheckTypeSetElemNestedAttrs("data.mssql_database_role.exists", "members.*", attrs)
+						}
+						return resource.ComposeAggregateTestCheckFunc(
+							memberCheck(map[string]string{
+								"id":   roleMemberResourceId,
+								"name": "test_role_member",
+								"type": "DATABASE_ROLE",
+							}),
+							memberCheck(map[string]string{
+								"id":   userMemberResourceId,
+								"name": "test_user_member",
+								"type": "SQL_USER",
+							}),
+						)(state)
+					},
+				),
 			},
 			{
 				Config: `

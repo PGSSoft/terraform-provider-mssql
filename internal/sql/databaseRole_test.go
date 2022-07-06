@@ -92,3 +92,86 @@ func (s *DatabaseRoleTestSuite) TestGetDatabaseRoles() {
 		s.Equal(id, roles[id].GetId(s.ctx), "Role ID")
 	}
 }
+
+func (s *DatabaseRoleTestSuite) TestAddMember() {
+	s.expectUserNameQuery(int(s.role.id), "test_role")
+	s.expectUserNameQuery(345, "test_member")
+	expectExactExec(s.mock, "ALTER ROLE [test_role] ADD MEMBER [test_member]").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.role.AddMember(s.ctx, GenericDatabasePrincipalId(345))
+}
+
+func (s *DatabaseRoleTestSuite) TestHasMember() {
+	cases := map[string]struct {
+		rows   []int
+		result bool
+	}{
+		"true": {
+			rows:   []int{145, 124},
+			result: true,
+		},
+		"false": {
+			rows:   []int{1341, 121},
+			result: false,
+		},
+		"empty rows": {
+			result: false,
+		},
+	}
+
+	for name, tc := range cases {
+		s.Run(name, func() {
+			s.SetupTest()
+			rows := newRows("id", "name", "type")
+			for _, id := range tc.rows {
+				rows.AddRow(id, "name", "type")
+			}
+
+			s.expectMembersQuery().WillReturnRows(rows)
+
+			res := s.role.HasMember(s.ctx, GenericDatabasePrincipalId(124))
+
+			s.Equal(tc.result, res)
+		})
+	}
+}
+
+func (s *DatabaseRoleTestSuite) TestRemoveMember() {
+	s.expectUserNameQuery(int(s.role.id), "test_role")
+	s.expectUserNameQuery(1351, "test_member")
+	expectExactExec(s.mock, "ALTER ROLE [test_role] DROP MEMBER [test_member]").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.role.RemoveMember(s.ctx, GenericDatabasePrincipalId(1351))
+}
+
+func (s *DatabaseRoleTestSuite) TestGetMembers() {
+	rows := newRows("principal_id", "name", "type").
+		AddRow(135, "test_user", "S").
+		AddRow(263, "test_role", "R")
+	s.expectMembersQuery().WillReturnRows(rows)
+
+	members := s.role.GetMembers(s.ctx)
+
+	s.Equal(map[GenericDatabasePrincipalId]DatabaseRoleMember{
+		135: {
+			Id:   135,
+			Name: "test_user",
+			Type: SQL_USER,
+		},
+		263: {
+			Id:   263,
+			Name: "test_role",
+			Type: DATABASE_ROLE,
+		},
+	}, members)
+}
+
+func (s *DatabaseRoleTestSuite) expectMembersQuery() *sqlmock.ExpectedQuery {
+	return expectExactQuery(s.mock, `
+SELECT principal_id, [name], [type] 
+FROM sys.database_principals 
+	INNER JOIN sys.database_role_members ON principal_id = member_principal_id
+WHERE [type] IN ('S', 'R') AND role_principal_id=@p1`).WithArgs(s.role.id)
+}

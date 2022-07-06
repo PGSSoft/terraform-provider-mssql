@@ -138,10 +138,11 @@ func (p *provider) Configure(ctx context.Context, request tfsdk.ConfigureProvide
 
 func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
 	return map[string]tfsdk.ResourceType{
-		"mssql_database":      DatabaseResourceType{},
-		"mssql_sql_login":     SqlLoginResourceType{},
-		"mssql_sql_user":      SqlUserResourceType{},
-		"mssql_database_role": DatabaseRoleResourceType{},
+		"mssql_database":             DatabaseResourceType{},
+		"mssql_sql_login":            SqlLoginResourceType{},
+		"mssql_sql_user":             SqlUserResourceType{},
+		"mssql_database_role":        DatabaseRoleResourceType{},
+		"mssql_database_role_member": DatabaseRoleMemberResourceType{},
 	}, nil
 }
 

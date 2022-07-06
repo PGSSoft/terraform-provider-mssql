@@ -54,7 +54,7 @@ func (d databaseRoleResource) Create(ctx context.Context, request tfsdk.CreateRe
 		dbId sql.DatabaseId
 		role sql.DatabaseRole
 	)
-	ownerId := DbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
+	ownerId := dbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
 
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	utils.StopOnError(ctx).
@@ -85,7 +85,7 @@ func (d databaseRoleResource) Read(ctx context.Context, request tfsdk.ReadResour
 	var (
 		data   databaseRoleResourceData
 		db     sql.Database
-		roleId DbObjectId[sql.DatabaseRoleId]
+		roleId dbObjectId[sql.DatabaseRoleId]
 		role   sql.DatabaseRole
 	)
 
@@ -104,10 +104,10 @@ func (d databaseRoleResource) Update(ctx context.Context, request tfsdk.UpdateRe
 		data   databaseRoleResourceData
 		dbId   sql.DatabaseId
 		db     sql.Database
-		roleId DbObjectId[sql.DatabaseRoleId]
+		roleId dbObjectId[sql.DatabaseRoleId]
 		role   sql.DatabaseRole
 	)
-	ownerId := DbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
+	ownerId := dbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
 
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	utils.StopOnError(ctx).
@@ -146,7 +146,7 @@ func (d databaseRoleResource) Delete(ctx context.Context, request tfsdk.DeleteRe
 	var (
 		data   databaseRoleResourceData
 		db     sql.Database
-		roleId DbObjectId[sql.DatabaseRoleId]
+		roleId dbObjectId[sql.DatabaseRoleId]
 		role   sql.DatabaseRole
 	)
 

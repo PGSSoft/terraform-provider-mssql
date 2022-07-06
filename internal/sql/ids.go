@@ -27,3 +27,11 @@ type StringObjectId interface {
 type ObjectId interface {
 	NumericObjectId | StringObjectId
 }
+
+type DatabasePrincipalType int
+
+const (
+	UNONOWN DatabasePrincipalType = iota
+	SQL_USER
+	DATABASE_ROLE
+)

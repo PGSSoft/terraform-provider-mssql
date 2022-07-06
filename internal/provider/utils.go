@@ -23,14 +23,7 @@ func getResourceDb(ctx context.Context, conn sql.Connection, dbId string) sql.Da
 	return sql.GetDatabase(ctx, conn, sql.DatabaseId(id))
 }
 
-type DbObjectId[T sql.NumericObjectId] struct {
-	DbId     sql.DatabaseId
-	ObjectId T
-	IsEmpty  bool
-}
-
-func parseDbObjectId[T sql.NumericObjectId](ctx context.Context, s string) DbObjectId[T] {
-	var res DbObjectId[T]
+func parseIdSegments(ctx context.Context, s string) []int {
 	var segments []int
 
 	for _, seg := range strings.Split(s, "/") {
@@ -38,14 +31,27 @@ func parseDbObjectId[T sql.NumericObjectId](ctx context.Context, s string) DbObj
 			num, err := strconv.Atoi(seg)
 			if err != nil {
 				utils.AddError(ctx, fmt.Sprintf("Failed to parse DB object ID %q", s), err)
-				return res
+				return nil
 			}
 
 			segments = append(segments, num)
 		}
 	}
 
-	if len(segments) < 2 {
+	return segments
+}
+
+type dbObjectId[T sql.NumericObjectId] struct {
+	DbId     sql.DatabaseId
+	ObjectId T
+	IsEmpty  bool
+}
+
+func parseDbObjectId[T sql.NumericObjectId](ctx context.Context, s string) dbObjectId[T] {
+	var res dbObjectId[T]
+	segments := parseIdSegments(ctx, s)
+
+	if len(segments) < 2 || utils.HasError(ctx) {
 		res.IsEmpty = true
 	} else {
 		res.DbId = sql.DatabaseId(segments[0])
@@ -55,6 +61,32 @@ func parseDbObjectId[T sql.NumericObjectId](ctx context.Context, s string) DbObj
 	return res
 }
 
-func (id DbObjectId[T]) String() string {
+func (id dbObjectId[T]) String() string {
 	return fmt.Sprintf("%v/%v", id.DbId, id.ObjectId)
+}
+
+type dbObjectMemberId[TObject sql.NumericObjectId, TMember sql.NumericObjectId] struct {
+	dbObjectId[TObject]
+	MemberId TMember
+}
+
+func parseDbObjectMemberId[TObject sql.NumericObjectId, TMember sql.NumericObjectId](ctx context.Context, s string) dbObjectMemberId[TObject, TMember] {
+	res := dbObjectMemberId[TObject, TMember]{dbObjectId: parseDbObjectId[TObject](ctx, s)}
+	segments := parseIdSegments(ctx, s)
+
+	if len(segments) < 3 || utils.HasError(ctx) {
+		res.IsEmpty = true
+	} else {
+		res.MemberId = TMember(segments[2])
+	}
+
+	return res
+}
+
+func (id dbObjectMemberId[TObject, TMember]) String() string {
+	return fmt.Sprintf("%s/%d", id.dbObjectId, id.MemberId)
+}
+
+func (id dbObjectMemberId[TObject, TMember]) getMemberId() dbObjectId[TMember] {
+	return dbObjectId[TMember]{DbId: id.DbId, ObjectId: id.MemberId}
 }
