@@ -8,6 +8,12 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
+type DatabaseRoleMember struct {
+	Id   GenericDatabasePrincipalId
+	Name string
+	Type DatabasePrincipalType
+}
+
 type DatabaseRole interface {
 	GetId(context.Context) DatabaseRoleId
 	GetOwnerId(context.Context) GenericDatabasePrincipalId
@@ -16,6 +22,10 @@ type DatabaseRole interface {
 	Drop(context.Context)
 	Rename(_ context.Context, name string)
 	ChangeOwner(_ context.Context, ownerId GenericDatabasePrincipalId)
+	AddMember(_ context.Context, memberId GenericDatabasePrincipalId)
+	HasMember(_ context.Context, memberId GenericDatabasePrincipalId) bool
+	RemoveMember(_ context.Context, memberId GenericDatabasePrincipalId)
+	GetMembers(_ context.Context) map[GenericDatabasePrincipalId]DatabaseRoleMember
 }
 
 type databaseRole struct {
@@ -166,5 +176,80 @@ func (d databaseRole) ChangeOwner(ctx context.Context, ownerId GenericDatabasePr
 		}
 
 		return nil
+	})
+}
+
+func (d databaseRole) AddMember(ctx context.Context, memberId GenericDatabasePrincipalId) {
+	WithConnection(ctx, d.db.connect, func(conn *sql.DB) any {
+		roleName, memberName := getPrincipalName(ctx, conn, d.id), getPrincipalName(ctx, conn, memberId)
+		if utils.HasError(ctx) {
+			return nil
+		}
+
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER ROLE [%s] ADD MEMBER [%s]", roleName, memberName)); err != nil {
+			utils.AddError(ctx, "Failed to add role member", err)
+		}
+
+		return nil
+	})
+}
+
+func (d databaseRole) HasMember(ctx context.Context, memberId GenericDatabasePrincipalId) bool {
+	_, hasMember := d.GetMembers(ctx)[memberId]
+	return hasMember
+}
+
+func (d databaseRole) RemoveMember(ctx context.Context, memberId GenericDatabasePrincipalId) {
+	WithConnection(ctx, d.db.connect, func(conn *sql.DB) any {
+		roleName, memberName := getPrincipalName(ctx, conn, d.id), getPrincipalName(ctx, conn, memberId)
+		if utils.HasError(ctx) {
+			return nil
+		}
+
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER ROLE [%s] DROP MEMBER [%s]", roleName, memberName)); err != nil {
+			utils.AddError(ctx, "Failed to remove member from role", err)
+		}
+
+		return nil
+	})
+}
+
+func (d databaseRole) GetMembers(ctx context.Context) map[GenericDatabasePrincipalId]DatabaseRoleMember {
+	const errorSummary = "Failed to fetch role members"
+
+	return WithConnection(ctx, d.db.connect, func(conn *sql.DB) map[GenericDatabasePrincipalId]DatabaseRoleMember {
+		res := map[GenericDatabasePrincipalId]DatabaseRoleMember{}
+
+		sqlRes, err := conn.QueryContext(ctx, `
+SELECT principal_id, [name], [type] 
+FROM sys.database_principals 
+	INNER JOIN sys.database_role_members ON principal_id = member_principal_id
+WHERE [type] IN ('S', 'R') AND role_principal_id=@p1`, d.id)
+		switch err {
+		case sql.ErrNoRows: //ignore
+		case nil:
+			for sqlRes.Next() {
+				var role DatabaseRoleMember
+				var typ string
+				err = sqlRes.Scan(&role.Id, &role.Name, &typ)
+				if err != nil {
+					utils.AddError(ctx, errorSummary, err)
+					return nil
+				}
+
+				switch typ {
+				case "R":
+					role.Type = DATABASE_ROLE
+				case "S":
+					role.Type = SQL_USER
+				}
+
+				res[role.Id] = role
+			}
+		default:
+			utils.AddError(ctx, errorSummary, err)
+		}
+
+		return res
 	})
 }

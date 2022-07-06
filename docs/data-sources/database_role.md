@@ -41,6 +41,16 @@ output "id" {
 ### Read-Only
 
 - `id` (String) `<database_id>/<role_id>`. Role ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<role_name>')`
+- `members` (Attributes Set) Set of role members (see [below for nested schema](#nestedatt--members))
 - `owner_id` (String) ID of another database role or user owning this role. Can be retrieved using `mssql_database_role` or `mssql_sql_user`.
+
+<a id="nestedatt--members"></a>
+### Nested Schema for `members`
+
+Read-Only:
+
+- `id` (String) `<database_id>/<member_id>`. Member ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<member_name>')
+- `name` (String) Name of the database principal.
+- `type` (String) One of: `SQL_USER`, `DATABASE_ROLE`
 
 

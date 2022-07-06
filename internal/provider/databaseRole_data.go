@@ -17,13 +17,20 @@ var (
 type DatabaseRoleDataSourceType struct{}
 
 func (d DatabaseRoleDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	attrs := map[string]tfsdk.Attribute{}
+	attrs := map[string]tfsdk.Attribute{
+		"members": {
+			Description: "Set of role members",
+			Attributes:  tfsdk.SetNestedAttributes(databaseRoleMemberSetAttributes),
+			Computed:    true,
+		},
+	}
+
 	for n, attr := range databaseRoleAttributes {
 		if n == "database_id" {
 			attr = databaseIdResourceAttribute
 			attr.Optional = true
 		}
-		
+
 		attr.Required = n == "name"
 		attr.Computed = n != "name"
 
@@ -48,14 +55,14 @@ type databaseRoleData struct {
 
 func (d databaseRoleData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
 	var (
-		data databaseRoleResourceData
+		data databaseRoleDataResourceData
 		db   sql.Database
 		role sql.DatabaseRole
 	)
 
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[databaseRoleResourceData](ctx, request.Config) }).
+		Then(func() { data = utils.GetData[databaseRoleDataResourceData](ctx, request.Config) }).
 		Then(func() { db = getResourceDb(ctx, d.Db, data.DatabaseId.Value) }).
 		Then(func() { role = sql.GetDatabaseRoleByName(ctx, db, data.Name.Value) }).
 		Then(func() { data = data.withRoleData(ctx, role) }).

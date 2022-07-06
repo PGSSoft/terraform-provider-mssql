@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"regexp"
+	"strings"
 )
 
 type SqlMock interface {
@@ -24,5 +25,5 @@ func newRows(cols ...string) *sqlmock.Rows {
 }
 
 func formatExactSql(fmtSql string, args []any) string {
-	return fmt.Sprintf("^%s$", regexp.QuoteMeta(fmt.Sprintf(fmtSql, args...)))
+	return fmt.Sprintf("^%s$", regexp.QuoteMeta(strings.TrimSpace(fmt.Sprintf(fmtSql, args...))))
 }

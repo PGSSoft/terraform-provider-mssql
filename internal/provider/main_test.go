@@ -187,9 +187,16 @@ func sqlCheck(check func(db *sql2.DB) error) resource.TestCheckFunc {
 	}
 }
 
-func createDB(t *testing.T, name string) {
-	withDBConnection(func(conn *sql2.DB) {
-		_, err := conn.Exec(fmt.Sprintf("CREATE DATABASE [%s]", name))
-		require.NoError(t, err, "creating DB")
-	})
+func createDB(t *testing.T, name string) int {
+	conn := openDBConnection()
+	defer conn.Close()
+
+	_, err := conn.Exec(fmt.Sprintf("CREATE DATABASE [%s]", name))
+	require.NoError(t, err, "creating DB")
+
+	var dbId int
+	err = conn.QueryRow(fmt.Sprintf("USE [%s]; SELECT DB_ID()", name)).Scan(&dbId)
+	require.NoError(t, err, "fetching DB ID")
+
+	return dbId
 }
