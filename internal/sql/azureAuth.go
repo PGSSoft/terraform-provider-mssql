@@ -3,8 +3,8 @@ package sql
 import (
 	"context"
 	"fmt"
-	"github.com/denisenkom/go-mssqldb/azuread"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/microsoft/go-mssqldb/azuread"
 	"net/url"
 )
 
