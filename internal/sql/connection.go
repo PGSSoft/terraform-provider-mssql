@@ -6,9 +6,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"net/url"
 
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/denisenkom/go-mssqldb/azuread"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb/azuread"
 )
 
 type ConnectionAuth interface {
