@@ -205,6 +205,17 @@ func startMSSQL(imgTag string) {
 			return
 		}
 	}
+
+	for i := 0; i < 10; i++ {
+		conn, err := tryOpenDBConnection("master")
+		if err == nil {
+			conn.Close()
+			return
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+	panic(err)
 }
 
 func stopMSSQL() {
@@ -255,7 +266,7 @@ func newProviderFactories() map[string]func() (tfprotov6.ProviderServer, error) 
 	}
 }
 
-func openDBConnection(dbName string) *sql2.DB {
+func tryOpenDBConnection(dbName string) (*sql2.DB, error) {
 	driverName := "sqlserver"
 	u := url.URL{
 		Scheme: "sqlserver",
@@ -272,12 +283,11 @@ func openDBConnection(dbName string) *sql2.DB {
 	}
 
 	u.RawQuery = q.Encode()
-	conn, err := sql2.Open(driverName, u.String())
-	if err != nil {
-		panic(err)
-	}
+	return sql2.Open(driverName, u.String())
+}
 
-	return conn
+func openDBConnection(dbName string) *sql2.DB {
+	return panicOnError(tryOpenDBConnection(dbName))
 }
 
 func withDBConnection(dbName string, f func(conn *sql2.DB)) {
