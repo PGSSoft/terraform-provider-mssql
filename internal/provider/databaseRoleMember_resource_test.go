@@ -55,7 +55,7 @@ resource "mssql_database_role_member" %[1]q {
 		)
 	}
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = createDB(t, "db_role_member_test")

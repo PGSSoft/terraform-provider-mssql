@@ -13,7 +13,7 @@ func TestDatabaseRoleListData(t *testing.T) {
 	var roleResourceId, ownerResourceId string
 	var dbId string
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "db_role_list_test"))

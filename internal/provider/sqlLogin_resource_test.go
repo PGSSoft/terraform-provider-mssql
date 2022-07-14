@@ -59,7 +59,7 @@ resource "mssql_sql_login" %[1]q {
 
 	var loginId, defaultDbId, defaultLang string
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		Steps: []resource.TestStep{
 			{

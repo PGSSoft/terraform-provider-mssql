@@ -11,7 +11,7 @@ import (
 func TestSqlLoginListData(t *testing.T) {
 	var loginId string
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			withDBConnection("master", func(conn *sql.DB) {

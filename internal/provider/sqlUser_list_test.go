@@ -12,7 +12,7 @@ import (
 func TestSqlUserListData(t *testing.T) {
 	var dbId, userId, loginId, resourceId string
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "sql_users_list_test"))

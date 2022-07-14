@@ -22,7 +22,7 @@ data "mssql_sql_login" %[1]q {
 
 	var loginId, dbId string
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "test_db_login_data"))

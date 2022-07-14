@@ -45,7 +45,7 @@ resource "mssql_sql_user" %[1]q {
 `, resourceName, name, loginName)
 	}
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "user_test_db"))
