@@ -85,7 +85,7 @@ func (d sqlLoginResourceData) withSettings(settings sql.SqlLoginSettings, isAzur
 type SqlLoginResourceType struct{}
 
 func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	const azureSQLNote = " -> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
+	const azureSQLNote = "\n\n-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
 	return tfsdk.Schema{
 		Description: "Manages single login.",
 		Attributes: map[string]tfsdk.Attribute{
