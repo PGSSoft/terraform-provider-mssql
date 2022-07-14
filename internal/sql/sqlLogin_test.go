@@ -80,25 +80,43 @@ func (s *SqlLoginTestSuite) TestGetLoginsError() {
 func (s *SqlLoginTestSuite) TestCreateSqlLogin() {
 	cases := map[string]struct {
 		settings SqlLoginSettings
+		edition  SQLEdition
 		sql      string
 	}{
 		"simple login": {
 			settings: SqlLoginSettings{Name: "simple", Password: "simple_password"},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "CREATE LOGIN [simple] WITH PASSWORD='simple_password', CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF",
 		},
 		"must change": {
 			settings: SqlLoginSettings{Name: "must_change", Password: "must change password", CheckPasswordExpiration: true, MustChangePassword: true},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "CREATE LOGIN [must_change] WITH PASSWORD='must change password' MUST_CHANGE, CHECK_EXPIRATION=ON, CHECK_POLICY=OFF",
 		},
 		"default language": {
 			settings: SqlLoginSettings{Name: "default_language", Password: "test_password", CheckPasswordPolicy: true, DefaultLanguage: "test_language"},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "CREATE LOGIN [default_language] WITH PASSWORD='test_password', DEFAULT_LANGUAGE=[test_language], CHECK_EXPIRATION=OFF, CHECK_POLICY=ON",
+		},
+		"Azure SQL": {
+			settings: SqlLoginSettings{
+				Name:                    "default_language",
+				Password:                "test_password",
+				CheckPasswordPolicy:     true,
+				DefaultLanguage:         "test_language",
+				MustChangePassword:      true,
+				DefaultDatabaseId:       13,
+				CheckPasswordExpiration: true,
+			},
+			edition: EDITION_AZURE_SQL,
+			sql:     "CREATE LOGIN [default_language] WITH PASSWORD='test_password'",
 		},
 	}
 
 	for name, tc := range cases {
 		s.Run(name, func() {
 			const id = "0x1362311"
+			s.expectEditionQuery(tc.edition)
 			expectExactExec(s.mock, tc.sql).WillReturnResult(sqlmock.NewResult(0, 1))
 			s.expectSqlLoginIdQuery(tc.settings.Name).WillReturnRows(newRows("id").AddRow(id))
 
@@ -111,8 +129,9 @@ func (s *SqlLoginTestSuite) TestCreateSqlLogin() {
 }
 
 func (s *SqlLoginTestSuite) TestCreateSqlLoginDefaultDb() {
-	settings := SqlLoginSettings{Name: "test_login", Password: "test_password", DefaultDatabaseId: DatabaseId(1324)}
 	const id = "0x4746854"
+	settings := SqlLoginSettings{Name: "test_login", Password: "test_password", DefaultDatabaseId: DatabaseId(1324)}
+	s.expectEditionQuery(EDITION_ENTERPRISE)
 	expectExactQuery(s.mock, "SELECT DB_NAME(@p1)").WithArgs(settings.DefaultDatabaseId).WillReturnRows(newRows("name").AddRow("test_db"))
 	expectExactExec(s.mock, "CREATE LOGIN [test_login] WITH PASSWORD='test_password', DEFAULT_DATABASE=[test_db], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -127,6 +146,7 @@ func (s *SqlLoginTestSuite) TestCreateSqlLoginDefaultDb() {
 func (s *SqlLoginTestSuite) TestCreateSqlLoginError() {
 	settings := SqlLoginSettings{Name: "test_login", Password: "test_password"}
 	err := errors.New("test_error")
+	s.expectEditionQuery(EDITION_ENTERPRISE)
 	expectExactExec(s.mock, "CREATE LOGIN [test_login] WITH PASSWORD='test_password', CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF").WillReturnError(err)
 
 	login := CreateSqlLogin(s.ctx, s.conn, settings)
@@ -175,6 +195,25 @@ func (s *SqlLoginTestSuite) TestGetSettings() {
 	s.Equal(expectedSettings, settings)
 }
 
+func (s *SqlLoginTestSuite) TestGetSettingsAzureSql() {
+	expectedSettings := SqlLoginSettings{
+		Name:                    "test_name",
+		Password:                "test_hash",
+		MustChangePassword:      false,
+		DefaultDatabaseId:       0,
+		DefaultLanguage:         "",
+		CheckPasswordExpiration: false,
+		CheckPasswordPolicy:     false,
+	}
+	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
+		AddRow(expectedSettings.Name, expectedSettings.Password, nil, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 0, 0)
+	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
+
+	settings := s.login.GetSettings(s.ctx)
+
+	s.Equal(expectedSettings, settings)
+}
+
 func (s *SqlLoginTestSuite) TestGetSettingsError() {
 	err := errors.New("test_error")
 	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnError(err)
@@ -187,24 +226,42 @@ func (s *SqlLoginTestSuite) TestGetSettingsError() {
 func (s *SqlLoginTestSuite) TestUpdateSqlLoginSettings() {
 	cases := map[string]struct {
 		settings SqlLoginSettings
+		edition  SQLEdition
 		sql      string
 	}{
 		"simple login": {
 			settings: SqlLoginSettings{Name: "simple", Password: "simple_password"},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "ALTER LOGIN [old_name] WITH PASSWORD='simple_password', CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF, NAME=[simple]",
 		},
 		"must change": {
 			settings: SqlLoginSettings{Name: "must_change", Password: "must change password", CheckPasswordExpiration: true, MustChangePassword: true},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "ALTER LOGIN [old_name] WITH PASSWORD='must change password' MUST_CHANGE, CHECK_EXPIRATION=ON, CHECK_POLICY=OFF, NAME=[must_change]",
 		},
 		"default language": {
 			settings: SqlLoginSettings{Name: "default_language", Password: "test_password", CheckPasswordPolicy: true, DefaultLanguage: "test_language"},
+			edition:  EDITION_ENTERPRISE,
 			sql:      "ALTER LOGIN [old_name] WITH PASSWORD='test_password', DEFAULT_LANGUAGE=[test_language], CHECK_EXPIRATION=OFF, CHECK_POLICY=ON, NAME=[default_language]",
+		},
+		"Azure SQL": {
+			settings: SqlLoginSettings{
+				Name:                    "azure_sql",
+				Password:                "test_password",
+				CheckPasswordExpiration: true,
+				MustChangePassword:      true,
+				CheckPasswordPolicy:     true,
+				DefaultDatabaseId:       1343,
+				DefaultLanguage:         "us_english",
+			},
+			edition: EDITION_AZURE_SQL,
+			sql:     "ALTER LOGIN [old_name] WITH PASSWORD='test_password', NAME=[azure_sql]",
 		},
 	}
 
 	for name, tc := range cases {
 		s.Run(name, func() {
+			s.expectEditionQuery(tc.edition)
 			s.expectSqlLoginNameLookupQuery().WithArgs(s.login.id).WillReturnRows(newRows("name").AddRow("old_name"))
 			expectExactExec(s.mock, tc.sql).WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -215,6 +272,7 @@ func (s *SqlLoginTestSuite) TestUpdateSqlLoginSettings() {
 
 func (s *SqlLoginTestSuite) TestUpdateSqlLoginSettingsDefaultDb() {
 	settings := SqlLoginSettings{Name: "test_login", Password: "test_password", DefaultDatabaseId: DatabaseId(1324)}
+	s.expectEditionQuery(EDITION_ENTERPRISE)
 	expectExactQuery(s.mock, "SELECT DB_NAME(@p1)").WithArgs(settings.DefaultDatabaseId).WillReturnRows(newRows("name").AddRow("test_db"))
 	s.expectSqlLoginNameLookupQuery().WithArgs(s.login.id).WillReturnRows(newRows("name").AddRow("old_name"))
 	expectExactExec(s.mock, "ALTER LOGIN [old_name] WITH PASSWORD='test_password', DEFAULT_DATABASE=[test_db], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF, NAME=[test_login]").
@@ -226,6 +284,7 @@ func (s *SqlLoginTestSuite) TestUpdateSqlLoginSettingsDefaultDb() {
 func (s *SqlLoginTestSuite) TestUpdateSqlLoginSettingsError() {
 	err := errors.New("test_error")
 	settings := SqlLoginSettings{Name: "invalid_login", Password: "test_password"}
+	s.expectEditionQuery(EDITION_ENTERPRISE)
 	s.expectSqlLoginNameLookupQuery().WithArgs(s.login.id).WillReturnRows(newRows("name").AddRow(settings.Name))
 	expectExactExec(s.mock, "ALTER LOGIN [invalid_login] WITH PASSWORD='test_password', CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF, NAME=[invalid_login]").
 		WillReturnError(err)
@@ -247,7 +306,7 @@ func (s *SqlLoginTestSuite) expectSqlLoginsQuery() *sqlmock.ExpectedQuery {
 }
 
 func (s *SqlLoginTestSuite) expectSqlLoginIdQuery(loginName string) *sqlmock.ExpectedQuery {
-	return expectExactQuery(s.mock, "SELECT CONVERT(VARCHAR(85), SUSER_SID(@p1), 1)").WithArgs(loginName)
+	return expectExactQuery(s.mock, "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]=@p1").WithArgs(loginName)
 }
 
 func (s *SqlLoginTestSuite) expectSqlLoginNamesByIdQuery() *sqlmock.ExpectedQuery {
@@ -256,13 +315,14 @@ func (s *SqlLoginTestSuite) expectSqlLoginNamesByIdQuery() *sqlmock.ExpectedQuer
 
 func (s *SqlLoginTestSuite) expectSettingsQuery() *sqlmock.ExpectedQuery {
 	return expectExactQuery(s.mock, `SELECT 
-    [name], 
-    [password_hash], 
-    LOGINPROPERTY([name], 'IsMustChange') AS is_must_change, 
-    DB_ID([default_database_name]) AS default_database_id, 
-    [default_language_name], 
-    [is_expiration_checked], 
-    [is_policy_checked] 
-FROM sys.sql_logins 
-WHERE CONVERT(VARCHAR(85), [sid], 1) = @p1`)
+    l.[name], 
+    l.password_hash, 
+    LOGINPROPERTY(l.[name], 'IsMustChange') AS is_must_change, 
+    db.database_id AS default_database_id, 
+    l.default_language_name, 
+    l.is_expiration_checked, 
+    l.is_policy_checked 
+FROM sys.sql_logins AS l
+INNER JOIN sys.databases AS db ON l.default_database_name = db.[name]
+WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`)
 }

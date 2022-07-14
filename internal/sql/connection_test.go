@@ -76,6 +76,39 @@ func (s *ConnectionTestSuite) TestGetConnectionStringReturnsParamsSetByAuthProvi
 	s.True(diags.Contains(testDiag), "diagnostics")
 }
 
+func TestIsAzure(t *testing.T) {
+	cases := map[string]bool{
+		"Enterprise Edition":  false,
+		"Enterprise (64-bit)": false,
+		"SQL Azure":           true,
+		"SQL Azure (64-bit)":  true,
+	}
+
+	for edition, expected := range cases {
+		t.Run(edition, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			defer db.Close()
+			require.NoError(t, err, "creating SQL mock")
+			expectExactQuery(mock, "SELECT SERVERPROPERTY('edition')").WillReturnRows(newRows("prop").AddRow(edition))
+			c := connection{conn: db}
+			diags := diag.Diagnostics{}
+			ctx := utils.WithDiagnostics(context.Background(), &diags)
+
+			result := c.IsAzure(ctx)
+
+			if diags.HasError() {
+				for _, d := range diags {
+					if d.Severity() == diag.SeverityError {
+						t.Error(errors.New(d.Detail()))
+					}
+				}
+			}
+			assert.Equal(t, expected, result)
+			assert.NoError(t, mock.ExpectationsWereMet(), "mock expectations")
+		})
+	}
+}
+
 func TestExec(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	defer db.Close()

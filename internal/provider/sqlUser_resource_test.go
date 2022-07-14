@@ -11,16 +11,17 @@ import (
 )
 
 func TestSqlUserResource(t *testing.T) {
+	var dbId, userId, resourceId, loginId string
 
 	var createLogin = func(loginName string) string {
-		db := openDBConnection()
+		db := openDBConnection("master")
 		defer db.Close()
 
 		_, err := db.Exec(fmt.Sprintf("CREATE LOGIN [%s] WITH PASSWORD='Pa$$w0rd12'", loginName))
 		require.NoError(t, err, "creating new login")
 
 		var id string
-		err = db.QueryRow("SELECT CONVERT(VARCHAR(85), SUSER_SID(@p1), 1)", loginName).Scan(&id)
+		err = db.QueryRow("SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]=@p1", loginName).Scan(&id)
 		require.NoError(t, err, "fetching login ID")
 
 		return id
@@ -44,18 +45,11 @@ resource "mssql_sql_user" %[1]q {
 `, resourceName, name, loginName)
 	}
 
-	func() {
-		db := openDBConnection()
-		defer db.Close()
-
-		_, err := db.Exec("CREATE DATABASE [user_test_db]")
-		require.NoError(t, err, "Failed to create test DB")
-	}()
-
-	var userId, resourceId, loginId, dbId string
-
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
+		PreCheck: func() {
+			dbId = fmt.Sprint(createDB(t, "user_test_db"))
+		},
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
@@ -63,8 +57,8 @@ resource "mssql_sql_user" %[1]q {
 				},
 				Config: newResource("test_user", "test_user", "sqluser_test_login"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck(func(db *sql.DB) error {
-						if err := db.QueryRow("USE user_test_db; SELECT USER_ID(@p1), DB_ID()", "test_user").Scan(&userId, &dbId); err != nil {
+					sqlCheck("user_test_db", func(db *sql.DB) error {
+						if err := db.QueryRow("SELECT USER_ID(@p1)", "test_user").Scan(&userId); err != nil {
 							return err
 						}
 
@@ -77,9 +71,9 @@ resource "mssql_sql_user" %[1]q {
 						resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "database_id", &dbId),
 						resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "login_id", &loginId),
 						resource.TestCheckResourceAttr("mssql_sql_user.test_user", "name", "test_user"),
-						sqlCheck(func(db *sql.DB) error {
+						sqlCheck("user_test_db", func(db *sql.DB) error {
 							var actualLoginId string
-							err := db.QueryRow("USE user_test_db; SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualLoginId)
+							err := db.QueryRow("SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualLoginId)
 
 							assert.Equal(t, loginId, actualLoginId, "login ID")
 
@@ -97,9 +91,9 @@ resource "mssql_sql_user" %[1]q {
 					resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "id", &resourceId),
 					resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "login_id", &loginId),
 					resource.TestCheckResourceAttr("mssql_sql_user.test_user", "name", "renamed_user"),
-					sqlCheck(func(db *sql.DB) error {
+					sqlCheck("user_test_db", func(db *sql.DB) error {
 						var actualName, actualLoginId string
-						err := db.QueryRow("USE user_test_db; SELECT [name], CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualName, &actualLoginId)
+						err := db.QueryRow("SELECT [name], CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualName, &actualLoginId)
 
 						assert.Equal(t, "renamed_user", actualName)
 						assert.Equal(t, loginId, actualLoginId)

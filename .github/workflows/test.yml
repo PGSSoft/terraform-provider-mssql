@@ -5,6 +5,8 @@ on:
     paths-ignore:
       - 'README.md'
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
 
@@ -50,6 +52,7 @@ jobs:
         mssql:
           - '2019-latest'
           - '2017-latest'
+          - 'azure-sql'
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -60,7 +63,12 @@ jobs:
           terraform_wrapper: false
       - uses: actions/checkout@v3
       - run: go mod download
-      - run: go test -v -cover ./...
+      - run: go test --timeout 15m -v -cover ./...
         env:
           TF_ACC: "1"
           TF_MSSQL_IMG_TAG: ${{ matrix.mssql }}
+          TF_AZURE_SUBSCRIPTION_ID: fbf513eb-321c-40b8-8dbb-bb939ea1fe5a
+          TF_AZURE_RESOURCE_GROUP: terraform-mssql-tests
+          AZURE_CLIENT_ID: 874f61a5-e5c1-4811-b6bf-e6a1135bea5a
+          AZURE_TENANT_ID: b3e5a293-6975-4239-9637-c963e8d90b7a
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}

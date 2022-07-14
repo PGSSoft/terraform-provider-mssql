@@ -52,22 +52,40 @@ func (d sqlLoginResourceData) toSettings(ctx context.Context) sql.SqlLoginSettin
 	}
 }
 
-func (d sqlLoginResourceData) withSettings(settings sql.SqlLoginSettings) sqlLoginResourceData {
-	return sqlLoginResourceData{
-		Id:                      d.Id,
-		Name:                    types.String{Value: settings.Name},
-		Password:                d.Password,
-		MustChangePassword:      types.Bool{Value: settings.MustChangePassword},
-		DefaultDatabaseId:       types.String{Value: fmt.Sprint(settings.DefaultDatabaseId)},
-		DefaultLanguage:         types.String{Value: settings.DefaultLanguage},
-		CheckPasswordExpiration: types.Bool{Value: settings.CheckPasswordExpiration},
-		CheckPasswordPolicy:     types.Bool{Value: settings.CheckPasswordPolicy},
+func (d sqlLoginResourceData) withSettings(settings sql.SqlLoginSettings, isAzure bool) sqlLoginResourceData {
+	d.Name = types.String{Value: settings.Name}
+
+	if isAzure {
+		return d
 	}
+
+	if isAttrSet(d.MustChangePassword) {
+		d.MustChangePassword.Value = settings.MustChangePassword
+	}
+
+	if isAttrSet(d.DefaultDatabaseId) {
+		d.DefaultDatabaseId = types.String{Value: fmt.Sprint(settings.DefaultDatabaseId)}
+	}
+
+	if isAttrSet(d.DefaultLanguage) {
+		d.DefaultLanguage = types.String{Value: settings.DefaultLanguage}
+	}
+
+	if isAttrSet(d.CheckPasswordExpiration) {
+		d.CheckPasswordExpiration = types.Bool{Value: settings.CheckPasswordExpiration}
+	}
+
+	if isAttrSet(d.CheckPasswordPolicy) {
+		d.CheckPasswordPolicy = types.Bool{Value: settings.CheckPasswordPolicy}
+	}
+
+	return d
 }
 
 type SqlLoginResourceType struct{}
 
 func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	const azureSQLNote = " -> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
 	return tfsdk.Schema{
 		Description: "Manages single login.",
 		Attributes: map[string]tfsdk.Attribute{
@@ -84,39 +102,34 @@ func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 			"must_change_password": func() tfsdk.Attribute {
 				attr := sqlLoginAttributes["must_change_password"]
 				attr.Optional = true
-				attr.Computed = true
 				attr.MarkdownDescription += " Defaults to `false`. \n\n" +
 					"-> **Note** After password is changed, this flag is being reset to `false`, which will show as changes in Terraform plan. " +
-					"Use `ignore_changes` block to prevent this behavior."
+					"Use `ignore_changes` block to prevent this behavior." + azureSQLNote
 				return attr
 			}(),
 			"default_database_id": func() tfsdk.Attribute {
 				attr := sqlLoginAttributes["default_database_id"]
 				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += " Defaults to ID of `master`."
+				attr.MarkdownDescription += " Defaults to ID of `master`." + azureSQLNote
 				return attr
 			}(),
 			"default_language": func() tfsdk.Attribute {
 				attr := sqlLoginAttributes["default_language"]
 				attr.Optional = true
-				attr.Computed = true
 				attr.Description += " Defaults to current default language of the server. " +
-					"If the default language of the server is later changed, the default language of the login remains unchanged."
+					"If the default language of the server is later changed, the default language of the login remains unchanged." + azureSQLNote
 				return attr
 			}(),
 			"check_password_expiration": func() tfsdk.Attribute {
 				attr := sqlLoginAttributes["check_password_expiration"]
 				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += " Defaults to `false`."
+				attr.MarkdownDescription += " Defaults to `false`." + azureSQLNote
 				return attr
 			}(),
 			"check_password_policy": func() tfsdk.Attribute {
 				attr := sqlLoginAttributes["check_password_policy"]
 				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += " Defaults to `true`."
+				attr.MarkdownDescription += " Defaults to `true`." + azureSQLNote
 				return attr
 			}(),
 		},
@@ -145,7 +158,7 @@ func (l SqlLoginResource) Create(ctx context.Context, request tfsdk.CreateResour
 		return
 	}
 
-	data = data.withSettings(login.GetSettings(ctx))
+	data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx))
 	data.Id = types.String{Value: string(login.GetId(ctx))}
 	if utils.HasError(ctx) {
 		return
@@ -176,7 +189,7 @@ func (l SqlLoginResource) Read(ctx context.Context, request tfsdk.ReadResourceRe
 		return
 	}
 
-	data = data.withSettings(login.GetSettings(ctx))
+	data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx))
 	if utils.HasError(ctx) {
 		return
 	}
@@ -200,7 +213,7 @@ func (l SqlLoginResource) Update(ctx context.Context, request tfsdk.UpdateResour
 		return
 	}
 
-	if data = data.withSettings(login.GetSettings(ctx)); utils.HasError(ctx) {
+	if data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx)); utils.HasError(ctx) {
 		return
 	}
 

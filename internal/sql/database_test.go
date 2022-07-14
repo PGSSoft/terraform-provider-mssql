@@ -25,7 +25,7 @@ func (s *DatabaseTestSuite) SetupTest() {
 }
 
 func (s *DatabaseTestSuite) TestGetDatabaseByName() {
-	expectExactQuery(s.mock, "SELECT DB_ID(@p1)").WithArgs("test_db").WillReturnRows(newRows("ID").AddRow(21365))
+	s.expectDatabaseIdQuery().WillReturnRows(newRows("ID").AddRow(21365))
 
 	db := GetDatabaseByName(s.ctx, s.conn, "test_db")
 
@@ -165,5 +165,5 @@ func (s *DatabaseTestSuite) expectDatabaseSettingQuery() *sqlmock.ExpectedQuery 
 }
 
 func (s *DatabaseTestSuite) expectDatabaseIdQuery() *sqlmock.ExpectedQuery {
-	return expectExactQuery(s.mock, "SELECT DB_ID(@p1)")
+	return expectExactQuery(s.mock, "SELECT database_id FROM sys.databases WHERE [name] = @p1")
 }

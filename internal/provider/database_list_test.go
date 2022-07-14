@@ -17,16 +17,13 @@ func TestDatabaseListData(t *testing.T) {
 		})
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: `data "mssql_databases" "list" {}`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					checkPredefinedDB(1, "master"),
-					checkPredefinedDB(2, "tempdb"),
-					checkPredefinedDB(3, "model"),
-					checkPredefinedDB(4, "msdb"),
 				),
 			},
 		},

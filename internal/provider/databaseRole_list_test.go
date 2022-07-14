@@ -10,13 +10,14 @@ import (
 )
 
 func TestDatabaseRoleListData(t *testing.T) {
-	createDB(t, "db_role_list_test")
-
 	var roleResourceId, ownerResourceId string
 	var dbId string
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
+		PreCheck: func() {
+			dbId = fmt.Sprint(createDB(t, "db_role_list_test"))
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: `data "mssql_database_roles" "master" {}`,
@@ -29,14 +30,13 @@ func TestDatabaseRoleListData(t *testing.T) {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection(func(conn *sql.DB) {
+					withDBConnection("db_role_list_test", func(conn *sql.DB) {
 						var roleId, ownerId int
 						err := conn.QueryRow(`
-USE [db_role_list_test];
 CREATE ROLE test_owner;
 CREATE ROLE test_role AUTHORIZATION test_owner;
-SELECT DB_ID(), DATABASE_PRINCIPAL_ID('test_role'), DATABASE_PRINCIPAL_ID('test_owner');
-`).Scan(&dbId, &roleId, &ownerId)
+SELECT DATABASE_PRINCIPAL_ID('test_role'), DATABASE_PRINCIPAL_ID('test_owner');
+`).Scan(&roleId, &ownerId)
 
 						require.NoError(t, err, "creating role")
 

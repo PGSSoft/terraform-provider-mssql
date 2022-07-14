@@ -55,7 +55,7 @@ func GetDatabase(_ context.Context, conn Connection, id DatabaseId) Database {
 func GetDatabaseByName(ctx context.Context, conn Connection, name string) Database {
 	id := DatabaseId(0)
 
-	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
+	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
