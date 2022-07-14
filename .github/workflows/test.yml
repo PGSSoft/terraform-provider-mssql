@@ -63,7 +63,7 @@ jobs:
           terraform_wrapper: false
       - uses: actions/checkout@v3
       - run: go mod download
-      - run: go test --timeout 15m -v -cover ./...
+      - run: go test --timeout 30m -v -cover ./...
         env:
           TF_ACC: "1"
           TF_MSSQL_IMG_TAG: ${{ matrix.mssql }}

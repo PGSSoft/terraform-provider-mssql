@@ -94,10 +94,16 @@ func createAzureSQL() {
 
 	ctx := context.Background()
 	token := panicOnError(azidentity.NewDefaultAzureCredential(nil))
-	auth := panicOnError(a.NewAzureIdentityAuthenticationProvider(token))
-	graphAdapter := panicOnError(msgraphsdk.NewGraphRequestAdapter(auth))
-	graphClient := msgraphsdk.NewGraphServiceClient(graphAdapter)
-	me := panicOnError(graphClient.Me().Get())
+
+	clientId := os.Getenv("AZURE_CLIENT_ID")
+	if clientId == "" {
+		auth := panicOnError(a.NewAzureIdentityAuthenticationProvider(token))
+		graphAdapter := panicOnError(msgraphsdk.NewGraphRequestAdapter(auth))
+		graphClient := msgraphsdk.NewGraphServiceClient(graphAdapter)
+		me := panicOnError(graphClient.Me().Get())
+		clientId = *me.GetId()
+	}
+
 	serverClient := panicOnError(armsql.NewServersClient(azureSubscription, token, nil))
 
 	request := panicOnError(serverClient.BeginCreateOrUpdate(ctx, azureResourceGroup, azureServerName, armsql.Server{
@@ -105,8 +111,8 @@ func createAzureSQL() {
 		Properties: &armsql.ServerProperties{
 			Administrators: &armsql.ServerExternalAdministrator{
 				AzureADOnlyAuthentication: to.Ptr(true),
-				Sid:                       me.GetId(),
-				Login:                     me.GetMail(),
+				Sid:                       &clientId,
+				Login:                     &clientId,
 			},
 		},
 	}, nil))
