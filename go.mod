@@ -5,9 +5,8 @@ go 1.18
 replace github.com/microsoft/go-mssqldb v0.15.0 => ./deps/go-mssqldb
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/docker/docker v20.10.17+incompatible
