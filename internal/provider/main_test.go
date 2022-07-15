@@ -197,14 +197,20 @@ func startMSSQL(imgTag string) {
 		}
 	}
 
-	for i := 0; i < 10; i++ {
-		conn, err := tryOpenDBConnection("master")
+	for i := time.Second; i <= 5*time.Second; i += time.Second {
+		var conn *sql2.DB
+		conn, err = tryOpenDBConnection("master")
+
 		if err == nil {
+			err = conn.QueryRow("SELECT 1;").Err()
 			conn.Close()
-			return
+
+			if err == nil {
+				return
+			}
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(i)
 	}
 	panic(err)
 }
