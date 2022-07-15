@@ -140,16 +140,7 @@ func destroyAzureSQL() {
 	ctx := context.Background()
 	token := panicOnError(azidentity.NewDefaultAzureCredential(nil))
 	client := panicOnError(armsql.NewServersClient(azureSubscription, token, nil))
-	pager := client.NewListByResourceGroupPager(azureResourceGroup, nil)
-
-	for pager.More() {
-		page := panicOnError(pager.NextPage(ctx))
-		for _, r := range page.Value {
-
-			fmt.Fprintf(os.Stdout, "Triggering deletion of Azure SQL server %q\n", *r.ID)
-			panicOnError(client.BeginDelete(ctx, azureResourceGroup, *r.Name, nil))
-		}
-	}
+	panicOnError(client.BeginDelete(ctx, azureResourceGroup, azureServerName, nil))
 }
 
 func startMSSQL(imgTag string) {
