@@ -51,7 +51,6 @@ jobs:
           - '1.2.*'
         mssql:
           - '2019-latest'
-          - '2017-latest'
           - 'azure-sql'
     steps:
       - uses: actions/setup-go@v3
