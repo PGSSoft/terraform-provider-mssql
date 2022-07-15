@@ -81,7 +81,7 @@ Optional:
 <a id="nestedatt--sql_auth"></a>
 ### Nested Schema for `sql_auth`
 
-Optional:
+Required:
 
 - `password` (String, Sensitive) Password for SQL authentication.
 - `username` (String) User name for SQL authentication.
