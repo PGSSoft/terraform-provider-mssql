@@ -17,6 +17,13 @@ var (
 	_ suite.AfterTest      = &SqlTestSuite{}
 )
 
+type SQLEdition string
+
+const (
+	EDITION_AZURE_SQL  SQLEdition = "SQL Azure"
+	EDITION_ENTERPRISE SQLEdition = "Enterprise Edition"
+)
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
@@ -64,7 +71,7 @@ func (s *SqlTestSuite) verifyError(err error) {
 }
 
 func (s *SqlTestSuite) expectSqlLoginNameLookupQuery() *sqlmock.ExpectedQuery {
-	return expectExactQuery(s.mock, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))")
+	return expectExactQuery(s.mock, "SELECT [name] FROM sys.sql_logins WHERE [sid]=CONVERT(VARBINARY(85), @p1, 1)")
 }
 
 func (s *SqlTestSuite) expectDatabasePrincipalIdLookupQuery(name string, id int) *sqlmock.ExpectedQuery {
@@ -75,6 +82,11 @@ func (s *SqlTestSuite) expectUserNameQuery(id int, name string) {
 	expectExactQuery(s.mock, "SELECT USER_NAME(@p1)").
 		WithArgs(id).
 		WillReturnRows(newRows("id").AddRow(name))
+}
+
+func (s *SqlTestSuite) expectEditionQuery(edition SQLEdition) {
+	expectExactQuery(s.mock, "SELECT SERVERPROPERTY('edition')").
+		WillReturnRows(newRows("edition").AddRow(edition))
 }
 
 var _ Database = &dbMock{}

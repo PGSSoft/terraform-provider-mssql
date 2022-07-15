@@ -45,12 +45,22 @@ output "login_id" {
 ### Optional
 
 - `check_password_expiration` (Boolean) When `true`, password expiration policy is enforced for this login. Defaults to `false`.
+
+-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored.
 - `check_password_policy` (Boolean) When `true`, the Windows password policies of the computer on which SQL Server is running are enforced on this login. Defaults to `true`.
+
+-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored.
 - `default_database_id` (String) ID of login's default DB. The ID can be retrieved using `mssql_database` data resource. Defaults to ID of `master`.
+
+-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored.
 - `default_language` (String) Default language assigned to login. Defaults to current default language of the server. If the default language of the server is later changed, the default language of the login remains unchanged.
+
+-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored.
 - `must_change_password` (Boolean) When true, password change will be forced on first logon. Defaults to `false`. 
 
 -> **Note** After password is changed, this flag is being reset to `false`, which will show as changes in Terraform plan. Use `ignore_changes` block to prevent this behavior.
+
+-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored.
 
 ### Read-Only
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"strconv"
 	"strings"
 )
@@ -89,4 +90,8 @@ func (id dbObjectMemberId[TObject, TMember]) String() string {
 
 func (id dbObjectMemberId[TObject, TMember]) getMemberId() dbObjectId[TMember] {
 	return dbObjectId[TMember]{DbId: id.DbId, ObjectId: id.MemberId}
+}
+
+func isAttrSet[T attr.Value](attr T) bool {
+	return !attr.IsUnknown() && !attr.IsNull()
 }

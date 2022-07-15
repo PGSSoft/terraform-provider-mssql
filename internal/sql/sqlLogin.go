@@ -21,10 +21,15 @@ type SqlLoginSettings struct {
 }
 
 func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn Connection) string {
+	isAzure := conn.IsAzure(ctx)
+	if utils.HasError(ctx) {
+		return ""
+	}
+
 	builder := strings.Builder{}
 	builder.WriteString(fmt.Sprintf("PASSWORD='%s'", s.Password))
 
-	if s.MustChangePassword {
+	if s.MustChangePassword && !isAzure {
 		builder.WriteString(" MUST_CHANGE")
 	}
 
@@ -43,27 +48,28 @@ func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn Connection) str
 		}
 	}
 
-	var defaultDatabaseName string
-	if s.DefaultDatabaseId != DatabaseId(0) {
-		err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_NAME(@p1)", s.DefaultDatabaseId).Scan(&defaultDatabaseName)
-		if err != nil {
-			utils.AddError(ctx, "Failed to retrieve DB name for given ID", err)
-			return ""
+	if !isAzure {
+		var defaultDatabaseName string
+		if s.DefaultDatabaseId != DatabaseId(0) {
+			err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_NAME(@p1)", s.DefaultDatabaseId).Scan(&defaultDatabaseName)
+			if err != nil {
+				utils.AddError(ctx, "Failed to retrieve DB name for given ID", err)
+				return ""
+			}
 		}
+
+		addOption("DEFAULT_DATABASE", defaultDatabaseName)
+		addOption("DEFAULT_LANGUAGE", s.DefaultLanguage)
+		addOptionFlag("CHECK_EXPIRATION", s.CheckPasswordExpiration)
+		addOptionFlag("CHECK_POLICY", s.CheckPasswordPolicy)
 	}
-
-	addOption("DEFAULT_DATABASE", defaultDatabaseName)
-	addOption("DEFAULT_LANGUAGE", s.DefaultLanguage)
-
-	addOptionFlag("CHECK_EXPIRATION", s.CheckPasswordExpiration)
-	addOptionFlag("CHECK_POLICY", s.CheckPasswordPolicy)
 
 	return builder.String()
 }
 
 func getLoginId(ctx context.Context, conn Connection, loginName string) LoginId {
 	var id sql.NullString
-	err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT CONVERT(VARCHAR(85), SUSER_SID(@p1), 1)", loginName).Scan(&id)
+	err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]=@p1", loginName).Scan(&id)
 	if err != nil {
 		utils.AddError(ctx, "Failed to retrieve login ID", err)
 	}
@@ -157,25 +163,30 @@ func (l sqlLogin) Exists(ctx context.Context) bool {
 
 func (l sqlLogin) GetSettings(ctx context.Context) SqlLoginSettings {
 	var settings SqlLoginSettings
+	var isMustChange sql.NullBool
+
 	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, `
 SELECT 
-    [name], 
-    [password_hash], 
-    LOGINPROPERTY([name], 'IsMustChange') AS is_must_change, 
-    DB_ID([default_database_name]) AS default_database_id, 
-    [default_language_name], 
-    [is_expiration_checked], 
-    [is_policy_checked] 
-FROM sys.sql_logins 
-WHERE CONVERT(VARCHAR(85), [sid], 1) = @p1`, l.id).
+    l.[name], 
+    l.password_hash, 
+    LOGINPROPERTY(l.[name], 'IsMustChange') AS is_must_change, 
+    db.database_id AS default_database_id, 
+    l.default_language_name, 
+    l.is_expiration_checked, 
+    l.is_policy_checked 
+FROM sys.sql_logins AS l
+INNER JOIN sys.databases AS db ON l.default_database_name = db.[name]
+WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`, l.id).
 		Scan(
 			&settings.Name,
 			&settings.Password,
-			&settings.MustChangePassword,
+			&isMustChange,
 			&settings.DefaultDatabaseId,
 			&settings.DefaultLanguage,
 			&settings.CheckPasswordExpiration,
 			&settings.CheckPasswordPolicy)
+
+	settings.MustChangePassword = isMustChange.Valid && isMustChange.Bool
 
 	if err != nil {
 		utils.AddError(ctx, "Failed to retrieve DB settings", err)
@@ -209,9 +220,9 @@ func (l sqlLogin) Drop(ctx context.Context) {
 
 func (l sqlLogin) getName(ctx context.Context) string {
 	var name string
-	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT SUSER_SNAME(CONVERT(VARBINARY(85), @p1, 1))", l.id).Scan(&name)
+	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT [name] FROM sys.sql_logins WHERE [sid]=CONVERT(VARBINARY(85), @p1, 1)", l.id).Scan(&name)
 	if err != nil {
-		utils.AddError(ctx, "Failed to retrieve current login name", err)
+		utils.AddError(ctx, "Failed to retrieve login name", err)
 	}
 
 	return name

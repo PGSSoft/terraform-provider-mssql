@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
+	"time"
 )
 
 const NullDatabaseId = DatabaseId(-1)
@@ -55,7 +56,7 @@ func GetDatabase(_ context.Context, conn Connection, id DatabaseId) Database {
 func GetDatabaseByName(ctx context.Context, conn Connection, name string) Database {
 	id := DatabaseId(0)
 
-	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT DB_ID(@p1)", name).Scan(&id); err != nil {
+	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
@@ -153,12 +154,18 @@ func (db database) connect(ctx context.Context) *sql.DB {
 		return nil
 	}
 
-	conn, err := sql.Open(connDetails.Auth.getDriverName(), connStr)
+	var err error
+	var conn *sql.DB
+	for i := time.Second; i <= 5*time.Second; i += time.Second {
+		conn, err = sql.Open(connDetails.Auth.getDriverName(), connStr)
 
-	if err != nil {
-		utils.AddError(ctx, "Failed to open DB connection", err)
-		return nil
+		if err == nil {
+			return conn
+		}
+
+		time.Sleep(i)
 	}
 
-	return conn
+	utils.AddError(ctx, "Failed to open DB connection", err)
+	return nil
 }

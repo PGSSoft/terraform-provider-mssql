@@ -24,9 +24,6 @@ func TestDatabaseListData(t *testing.T) {
 				Config: `data "mssql_databases" "list" {}`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					checkPredefinedDB(1, "master"),
-					checkPredefinedDB(2, "tempdb"),
-					checkPredefinedDB(3, "model"),
-					checkPredefinedDB(4, "msdb"),
 				),
 			},
 		},

@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"net/url"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/microsoft/go-mssqldb/azuread"
 )
+
+var azureSQLEditionPattern = regexp.MustCompile("^SQL Azure.*")
 
 type ConnectionAuth interface {
 	configure(context.Context, *url.URL) diag.Diagnostics
@@ -23,6 +26,7 @@ type ConnectionDetails struct {
 }
 
 type Connection interface {
+	IsAzure(context.Context) bool
 	exec(_ context.Context, query string, args ...any) sql.Result
 	getConnectionDetails(context.Context) ConnectionDetails
 	getSqlConnection(context.Context) *sql.DB
@@ -42,6 +46,14 @@ func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnost
 	}
 
 	return connection{conn: db, connDetails: cd}, diags
+}
+
+func (c connection) IsAzure(ctx context.Context) bool {
+	var edition string
+	if err := c.conn.QueryRowContext(ctx, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
+		utils.AddError(ctx, "Failed to determine server edition", err)
+	}
+	return azureSQLEditionPattern.MatchString(edition)
 }
 
 func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, diag.Diagnostics) {

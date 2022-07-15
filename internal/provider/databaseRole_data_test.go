@@ -11,7 +11,8 @@ import (
 )
 
 func TestDatabaseRoleData(t *testing.T) {
-	createDB(t, "db_role_data_test")
+	var roleResourceId, ownerResourceId, roleMemberResourceId, userMemberResourceId string
+	var dbId string
 
 	newDataResource := func(resourceName string, roleName string) string {
 		return fmt.Sprintf(`
@@ -26,10 +27,8 @@ data "mssql_database_role" %[1]q {
 `, resourceName, roleName)
 	}
 
-	var roleResourceId, ownerResourceId, roleMemberResourceId, userMemberResourceId string
-	var dbId string
-
 	formatId := func(id int) string { return fmt.Sprintf("%s/%d", dbId, id) }
+
 	setIds := func(roleId int, ownerId int) {
 		roleResourceId = formatId(roleId)
 		ownerResourceId = formatId(ownerId)
@@ -46,6 +45,9 @@ data "mssql_database_role" %[1]q {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
+		PreCheck: func() {
+			dbId = fmt.Sprint(createDB(t, "db_role_data_test"))
+		},
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -53,11 +55,10 @@ data "mssql_database_role" %[1]q {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection(func(conn *sql.DB) {
+					withDBConnection("db_role_data_test", func(conn *sql.DB) {
 						var roleId, ownerId, roleMemberId, userMemberId int
 
 						err := conn.QueryRow(`
-USE [db_role_data_test];
 CREATE ROLE [test_owner];
 CREATE ROLE [test_role_member];
 CREATE USER [test_user_member] WITHOUT LOGIN;
@@ -67,10 +68,9 @@ ALTER ROLE [test_role] ADD MEMBER [test_user_member];
 SELECT 
     DATABASE_PRINCIPAL_ID('test_role'), 
     DATABASE_PRINCIPAL_ID('test_owner'), 
-    DB_ID(), 
     DATABASE_PRINCIPAL_ID('test_role_member'),
     DATABASE_PRINCIPAL_ID('test_user_member');
-`).Scan(&roleId, &ownerId, &dbId, &roleMemberId, &userMemberId)
+`).Scan(&roleId, &ownerId, &roleMemberId, &userMemberId)
 
 						require.NoError(t, err, "creating role")
 						setIds(roleId, ownerId)
@@ -107,9 +107,10 @@ data "mssql_database_role" "master" {
 }
 `,
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck(func(db *sql.DB) error {
+					sqlCheck("master", func(db *sql.DB) error {
 						var roleId, ownerId int
-						err := db.QueryRow("SELECT DB_ID(), DATABASE_PRINCIPAL_ID('public'), DATABASE_PRINCIPAL_ID('dbo')").Scan(&dbId, &roleId, &ownerId)
+						err := db.QueryRow("SELECT database_id, DATABASE_PRINCIPAL_ID('public'), DATABASE_PRINCIPAL_ID('dbo') FROM sys.databases WHERE [name]='master'").
+							Scan(&dbId, &roleId, &ownerId)
 						setIds(roleId, ownerId)
 						return err
 					}),

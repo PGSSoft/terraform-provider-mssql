@@ -10,35 +10,38 @@ import (
 )
 
 func TestDatabaseRoleMemberResource(t *testing.T) {
-	dbId := createDB(t, "db_role_member_test")
+	var resourceId string
+	var dbId int
 
 	newResource := func(resourceName string, roleName string, memberName string) string {
 		return fmt.Sprintf(`
+data "mssql_database" %[3]q {
+	name = "db_role_member_test"
+}
+
 resource "mssql_database_role" %[3]q {
 	name = %[3]q
-	database_id = %[4]d
+	database_id = data.mssql_database.%[3]s.id
 }
 
 resource "mssql_database_role" %[1]q {
 	name = %[2]q
-	database_id = %[4]d
+	database_id = data.mssql_database.%[3]s.id
 }
 
 resource "mssql_database_role_member" %[1]q {
 	role_id = mssql_database_role.%[1]s.id
 	member_id = mssql_database_role.%[3]s.id
 }
-`, resourceName, roleName, memberName, dbId)
+`, resourceName, roleName, memberName)
 	}
-
-	var resourceId string
 
 	checkMembership := func(roleName string, memberName string) resource.TestCheckFunc {
 		return resource.ComposeTestCheckFunc(
-			sqlCheck(func(db *sql.DB) error {
+			sqlCheck("db_role_member_test", func(db *sql.DB) error {
 				var roleId, memberId int
 
-				err := db.QueryRow("USE [db_role_member_test]; SELECT DATABASE_PRINCIPAL_ID(@p1), DATABASE_PRINCIPAL_ID(@p2)", roleName, memberName).
+				err := db.QueryRow("SELECT DATABASE_PRINCIPAL_ID(@p1), DATABASE_PRINCIPAL_ID(@p2)", roleName, memberName).
 					Scan(&roleId, &memberId)
 				if err != nil {
 					return err
@@ -54,6 +57,9 @@ resource "mssql_database_role_member" %[1]q {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
+		PreCheck: func() {
+			dbId = createDB(t, "db_role_member_test")
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: newResource("new_resource", "test_role", "test_member"),
@@ -72,21 +78,25 @@ resource "mssql_database_role_member" %[1]q {
 				ImportStateVerify: true,
 			},
 			{
-				Config: fmt.Sprintf(`
+				Config: `
+data "mssql_database" "invalid" {
+	name = "db_role_member_test"
+}
+
 data "mssql_database_role" "public" {
 	name = "db_owner"
 }
 
 resource "mssql_database_role" "invalid_membership" {
 	name = "invalid_membership"
-	database_id = %[1]d
+	database_id = data.mssql_database.invalid.id
 }
 
 resource "mssql_database_role_member" "invalid" {
 	member_id = mssql_database_role.invalid_membership.id
 	role_id = data.mssql_database_role.public.id
 }
-`, dbId),
+`,
 				ExpectError: regexp.MustCompile("same database"),
 			},
 		},

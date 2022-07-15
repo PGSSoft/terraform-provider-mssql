@@ -30,7 +30,7 @@ resource "mssql_database" %[1]q {
 	var dbId, dbCollation string
 
 	var checkCollation = func(dbName string, expected string) resource.TestCheckFunc {
-		return sqlCheck(func(db *sql.DB) error {
+		return sqlCheck("master", func(db *sql.DB) error {
 			var collation string
 			err := db.QueryRow("SELECT collation_name FROM sys.databases WHERE name = @p1", dbName).Scan(&collation)
 			assert.Equal(t, expected, collation)
@@ -44,7 +44,7 @@ resource "mssql_database" %[1]q {
 			{
 				Config: newDatabaseResource("test", "new_db"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck(func(db *sql.DB) error {
+					sqlCheck("master", func(db *sql.DB) error {
 						return db.QueryRow("SELECT database_id, collation_name FROM sys.databases WHERE name = 'new_db'").Scan(&dbId, &dbCollation)
 					}),
 					resource.ComposeAggregateTestCheckFunc(
@@ -74,10 +74,10 @@ resource "mssql_database" %[1]q {
 				Config:       newDatabaseResourceWithCollation("imported_db", "renamed_db_with_collation", "SQL_Latin1_General_CP1250_CI_AS"),
 				ImportState:  true,
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
-					db := openDBConnection()
+					db := openDBConnection("master")
 					defer db.Close()
 					var id string
-					err := db.QueryRow("SELECT DB_ID(@p1)", "renamed_db_with_collation").Scan(&id)
+					err := db.QueryRow("SELECT database_id FROM sys.databases WHERE [name] = @p1", "renamed_db_with_collation").Scan(&id)
 					return id, err
 				},
 				ImportStateVerify: true,

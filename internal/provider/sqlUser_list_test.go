@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -13,6 +14,9 @@ func TestSqlUserListData(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
+		PreCheck: func() {
+			dbId = fmt.Sprint(createDB(t, "sql_users_list_test"))
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: `data "mssql_sql_users" "master" {}`,
@@ -25,20 +29,23 @@ func TestSqlUserListData(t *testing.T) {
 			},
 			{
 				PreConfig: func() {
-					db := openDBConnection()
-					defer db.Close()
+					withDBConnection("master", func(conn *sql.DB) {
+						err := conn.QueryRow(`
+CREATE LOGIN [sql_users_list_test] WITH PASSWORD='C0mplicatedPa$$w0rd123';
+SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name] = 'sql_users_list_test'
+`).Scan(&loginId)
 
-					_, err := db.Exec("CREATE DATABASE [sql_users_list_test]")
-					require.NoError(t, err, "creating DB")
+						require.NoError(t, err, "creating login")
+					})
 
-					err = db.QueryRow(`
-USE [sql_users_list_test];
-CREATE LOGIN [sql_users_list_test] WITH PASSWORD='test_password', CHECK_POLICY=OFF;
+					withDBConnection("sql_users_list_test", func(conn *sql.DB) {
+						err := conn.QueryRow(`
 CREATE USER [sql_users_list_test] FOR LOGIN [sql_users_list_test];
-SELECT DB_ID(), DATABASE_PRINCIPAL_ID('sql_users_list_test'), CONVERT(VARCHAR(85), SUSER_SID('sql_users_list_test'), 1);
-`).Scan(&dbId, &userId, &loginId)
+SELECT DATABASE_PRINCIPAL_ID('sql_users_list_test');
+`).Scan(&userId)
 
-					require.NoError(t, err, "creating user")
+						require.NoError(t, err, "creating user")
+					})
 
 					resourceId = fmt.Sprintf("%s/%s", dbId, userId)
 				},
