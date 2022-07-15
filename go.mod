@@ -7,7 +7,6 @@ replace github.com/microsoft/go-mssqldb v0.15.0 => ./deps/go-mssqldb
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/docker/docker v20.10.17+incompatible
@@ -15,7 +14,7 @@ require (
 	github.com/glendc/go-external-ip v0.1.0
 	github.com/hashicorp/terraform-plugin-docs v0.12.0
 	github.com/hashicorp/terraform-plugin-framework v0.9.0
-	github.com/hashicorp/terraform-plugin-go v0.10.0
+	github.com/hashicorp/terraform-plugin-go v0.11.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.18.0
 	github.com/microsoft/go-mssqldb v0.15.0
 	github.com/microsoft/kiota-authentication-azure-go v0.3.1
