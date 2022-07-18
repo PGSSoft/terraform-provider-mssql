@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microsoft/go-mssqldb/msdsn"
+	"github.com/denisenkom/go-mssqldb/msdsn"
 )
 
 func driverWithProcess(t *testing.T, tl Logger) *Driver {
@@ -488,10 +488,6 @@ func TestParams(t *testing.T) {
 	}
 	values := []interface{}{
 		int64(5),
-		int32(10),
-		int16(20),
-		int8(40),
-		int(10000),
 		"hello",
 		"",
 		[]byte{1, 2, 3},
@@ -529,19 +525,6 @@ func TestParams(t *testing.T) {
 				}
 			case time.Time:
 				same = decodedval.UTC() == val
-			case int64:
-				switch intVal := val.(type) {
-				case int16:
-					same = decodedval == int64(intVal)
-				case int32:
-					same = decodedval == int64(intVal)
-				case int8:
-					same = decodedval == int64(intVal)
-				case int:
-					same = decodedval == int64(intVal)
-				default:
-					same = retval == val
-				}
 			default:
 				same = retval == val
 			}
@@ -1606,10 +1589,10 @@ func TestColumnTypeIntrospection(t *testing.T) {
 		{"cast('abc' as varbinary(max))", "VARBINARY", reflect.TypeOf([]byte{}), true, 2147483645, false, 0, 0},
 		{"cast(1 as datetime)", "DATETIME", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
 		{"cast(1 as smalldatetime)", "SMALLDATETIME", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
-		{"cast(getdate() as datetime2(7))", "DATETIME2", reflect.TypeOf(time.Time{}), false, 0, true, 0, 7},
-		{"cast(getdate() as datetimeoffset(7))", "DATETIMEOFFSET", reflect.TypeOf(time.Time{}), false, 0, true, 0, 7},
+		{"cast(getdate() as datetime2(7))", "DATETIME2", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
+		{"cast(getdate() as datetimeoffset(7))", "DATETIMEOFFSET", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
 		{"cast(getdate() as date)", "DATE", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
-		{"cast(getdate() as time)", "TIME", reflect.TypeOf(time.Time{}), false, 0, true, 0, 7},
+		{"cast(getdate() as time)", "TIME", reflect.TypeOf(time.Time{}), false, 0, false, 0, 0},
 		{"'abc'", "VARCHAR", reflect.TypeOf(""), true, 3, false, 0, 0},
 		{"cast('abc' as varchar(max))", "VARCHAR", reflect.TypeOf(""), true, 2147483645, false, 0, 0},
 		{"N'abc'", "NVARCHAR", reflect.TypeOf(""), true, 3, false, 0, 0},

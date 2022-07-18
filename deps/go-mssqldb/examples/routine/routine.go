@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 var (

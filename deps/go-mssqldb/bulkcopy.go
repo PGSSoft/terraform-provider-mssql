@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/microsoft/go-mssqldb/internal/decimal"
-	"github.com/microsoft/go-mssqldb/msdsn"
+	"github.com/denisenkom/go-mssqldb/internal/decimal"
+	"github.com/denisenkom/go-mssqldb/msdsn"
 )
 
 type Bulk struct {
@@ -381,14 +381,6 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			res.buffer = str2ucs2(val)
 		case int64:
 			res.buffer = []byte(strconv.FormatInt(val, 10))
-		case int:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int8:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int32:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int16:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
 		case []byte:
 			res.buffer = val
 		default:
@@ -403,14 +395,6 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			res.buffer = []byte(val)
 		case []byte:
 			res.buffer = val
-		case int:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int8:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int16:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
-		case int32:
-			res.buffer = []byte(strconv.FormatInt(int64(val), 10))
 		case int64:
 			res.buffer = []byte(strconv.FormatInt(val, 10))
 		default:

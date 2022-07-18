@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"regexp"
 
+	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/denisenkom/go-mssqldb/azuread"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	_ "github.com/microsoft/go-mssqldb"
-	_ "github.com/microsoft/go-mssqldb/azuread"
 )
 
 var azureSQLEditionPattern = regexp.MustCompile("^SQL Azure.*")

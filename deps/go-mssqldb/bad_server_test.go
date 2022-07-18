@@ -10,7 +10,7 @@ import (
 
 // tests simulating bad server
 
-func testConnectionBad(t *testing.T, connStr string) (err error) {
+func testConnectionBad(t *testing.T, connStr string) {
 	conn, err := sql.Open("mssql", connStr)
 	if err != nil {
 		// should not fail here
@@ -24,8 +24,6 @@ func testConnectionBad(t *testing.T, connStr string) (err error) {
 	if err == nil {
 		t.Fatal("Scan should fail but it succeeded")
 	}
-
-	return
 }
 
 func testBadServer(t *testing.T, handler func(net.Conn)) {
