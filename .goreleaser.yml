@@ -21,6 +21,8 @@ builds:
         goarch: '386'
       - goos: windows
         goarch: arm
+      - goos: freebsd
+        goarch: '386'
     binary: '{{ .ProjectName }}_v{{ .Version }}'
 
 archives:
