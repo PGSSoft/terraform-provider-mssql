@@ -7,7 +7,6 @@ replace github.com/microsoft/go-mssqldb v0.15.0 => ./deps/go-mssqldb
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/docker/docker v20.10.17+incompatible
@@ -19,7 +18,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.18.0
 	github.com/microsoft/go-mssqldb v0.15.0
 	github.com/microsoft/kiota-authentication-azure-go v0.3.1
-	github.com/microsoftgraph/msgraph-sdk-go v0.28.0
+	github.com/microsoftgraph/msgraph-sdk-go v0.30.0
 	github.com/stretchr/testify v1.8.0
 )
 
@@ -71,10 +70,10 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/microsoft/kiota-abstractions-go v0.8.1 // indirect
-	github.com/microsoft/kiota-http-go v0.5.1 // indirect
-	github.com/microsoft/kiota-serialization-json-go v0.5.3 // indirect
+	github.com/microsoft/kiota-http-go v0.5.2 // indirect
+	github.com/microsoft/kiota-serialization-json-go v0.5.5 // indirect
 	github.com/microsoft/kiota-serialization-text-go v0.4.1 // indirect
-	github.com/microsoftgraph/msgraph-sdk-go-core v0.26.1 // indirect
+	github.com/microsoftgraph/msgraph-sdk-go-core v0.26.2 // indirect
 	github.com/mitchellh/cli v1.1.4 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
