@@ -7,7 +7,6 @@ builds:
     ldflags:
       - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
     goos:
-      - freebsd
       - windows
       - linux
       - darwin
@@ -21,8 +20,6 @@ builds:
         goarch: '386'
       - goos: windows
         goarch: arm
-      - goos: freebsd
-        goarch: '386'
     binary: '{{ .ProjectName }}_v{{ .Version }}'
 
 archives:
