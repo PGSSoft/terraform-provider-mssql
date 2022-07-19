@@ -20,13 +20,32 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos:
+          - windows
+          - linux
+          - darwin
+        goarch:
+          - amd64
+          - '386'
+          - arm
+          - arm64
     steps:
       - uses: actions/setup-go@v3
+        if: ${{ !(matrix.goos == 'darwin' && (matrix.goarch == '386' || matrix.goarch == 'arm')) }}
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: actions/checkout@v3
+        if: ${{ !(matrix.goos == 'darwin' && (matrix.goarch == '386' || matrix.goarch == 'arm')) }}
       - run: go mod download
+        if: ${{ !(matrix.goos == 'darwin' && (matrix.goarch == '386' || matrix.goarch == 'arm')) }}
       - run: go build -v .
+        if: ${{ !(matrix.goos == 'darwin' && (matrix.goarch == '386' || matrix.goarch == 'arm')) }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
 
   generate:
     runs-on: ubuntu-latest
@@ -68,6 +87,6 @@ jobs:
           TF_MSSQL_IMG_TAG: ${{ matrix.mssql }}
           TF_AZURE_SUBSCRIPTION_ID: fbf513eb-321c-40b8-8dbb-bb939ea1fe5a
           TF_AZURE_RESOURCE_GROUP: terraform-mssql-tests
-          AZURE_CLIENT_ID: 874f61a5-e5c1-4811-b6bf-e6a1135bea5a
-          AZURE_TENANT_ID: b3e5a293-6975-4239-9637-c963e8d90b7a
+          AZURE_CLIENT_ID: 139df37c-3e72-4283-80c1-7be62f3d8e64
+          AZURE_TENANT_ID: 7029fc72-c85c-4ecd-86f6-1ab9852b576f
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}

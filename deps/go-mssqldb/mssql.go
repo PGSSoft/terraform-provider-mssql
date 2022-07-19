@@ -9,16 +9,15 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/bits"
 	"net"
 	"reflect"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/denisenkom/go-mssqldb/internal/querytext"
+	"github.com/denisenkom/go-mssqldb/msdsn"
 	"github.com/golang-sql/sqlexp"
-	"github.com/microsoft/go-mssqldb/internal/querytext"
-	"github.com/microsoft/go-mssqldb/msdsn"
 )
 
 // ReturnStatus may be used to return the return value from a proc.
@@ -124,20 +123,6 @@ func NewConnector(dsn string) (*Connector, error) {
 		driver: driverInstanceNoProcess,
 	}
 	return c, nil
-}
-
-// NewConnectorWithAccessTokenProvider creates a new connector from a DSN using the given
-// access token provider. The returned connector may be used with sql.OpenDB.
-func NewConnectorWithAccessTokenProvider(dsn string, tokenProvider func(ctx context.Context) (string, error)) (*Connector, error) {
-	params, _, err := msdsn.Parse(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewSecurityTokenConnector(
-		params,
-		tokenProvider,
-	)
 }
 
 // NewConnectorConfig creates a new Connector for a DSN Config struct.
@@ -428,7 +413,6 @@ func (d *Driver) connect(ctx context.Context, c *Connector, params msdsn.Config)
 }
 
 func (c *Conn) Close() error {
-	c.sess.buf.bufClose()
 	return c.sess.buf.transport.Close()
 }
 
@@ -922,34 +906,6 @@ func (s *Stmt) makeParam(val driver.Value) (res param, err error) {
 		return
 	}
 	switch val := val.(type) {
-	case int:
-		res.ti.TypeId = typeIntN
-		// Rather than guess if the caller intends to pass a 32bit int from a 64bit app based on the
-		// value of the int, we'll just match the runtime size of int.
-		// Apps that want a 32bit int should use int32
-		if bits.UintSize == 32 {
-			res.buffer = make([]byte, 4)
-			res.ti.Size = 4
-			binary.LittleEndian.PutUint32(res.buffer, uint32(val))
-		} else {
-			res.buffer = make([]byte, 8)
-			res.ti.Size = 8
-			binary.LittleEndian.PutUint64(res.buffer, uint64(val))
-		}
-	case int8:
-		res.ti.TypeId = typeIntN
-		res.buffer = []byte{byte(val)}
-		res.ti.Size = 1
-	case int16:
-		res.ti.TypeId = typeIntN
-		res.buffer = make([]byte, 2)
-		res.ti.Size = 2
-		binary.LittleEndian.PutUint16(res.buffer, uint16(val))
-	case int32:
-		res.ti.TypeId = typeIntN
-		res.buffer = make([]byte, 4)
-		res.ti.Size = 4
-		binary.LittleEndian.PutUint32(res.buffer, uint32(val))
 	case int64:
 		res.ti.TypeId = typeIntN
 		res.buffer = make([]byte, 8)
@@ -1118,6 +1074,7 @@ type Rowsq struct {
 	stmt        *Stmt
 	cols        []columnStruct
 	reader      *tokenProcessor
+	nextCols    []columnStruct
 	cancel      func()
 	requestDone bool
 	inResultSet bool
@@ -1145,11 +1102,8 @@ func (rc *Rowsq) Close() error {
 	}
 }
 
-// ProcessSingleResponse queues MsgNext for every columns token.
-// data/sql calls Columns during the app's call to Next.
+// data/sql calls Columns during the app's call to Next
 func (rc *Rowsq) Columns() (res []string) {
-	// r.cols is nil if the first query in a batch is a SELECT or similar query that returns a rowset.
-	// if will be non-nil for subsequent queries where NextResultSet() has populated it
 	if rc.cols == nil {
 	scan:
 		for {
@@ -1192,10 +1146,6 @@ func (rc *Rowsq) Next(dest []driver.Value) error {
 				return io.EOF
 			} else {
 				switch tokdata := tok.(type) {
-				case doneInProcStruct:
-					tok = (doneStruct)(tokdata)
-				}
-				switch tokdata := tok.(type) {
 				case []interface{}:
 					for i := range dest {
 						dest[i] = tokdata[i]
@@ -1222,11 +1172,9 @@ func (rc *Rowsq) Next(dest []driver.Value) error {
 					if rc.reader.outs.returnStatus != nil {
 						*rc.reader.outs.returnStatus = tokdata
 					}
-				case ServerError:
-					rc.requestDone = true
-					return tokdata
 				}
 			}
+
 		} else {
 			return rc.stmt.c.checkBadConn(rc.reader.ctx, err, false)
 		}
@@ -1239,7 +1187,7 @@ func (rc *Rowsq) HasNextResultSet() bool {
 	return !rc.requestDone
 }
 
-// Scans to the end of the current statement being processed
+// Scans to the next set of columns in the stream
 // Note that the caller may not have read all the rows in the prior set
 func (rc *Rowsq) NextResultSet() error {
 	if rc.requestDone {
@@ -1247,6 +1195,7 @@ func (rc *Rowsq) NextResultSet() error {
 	}
 scan:
 	for {
+		// we should have a columns token in the channel if we aren't at the end
 		tok, err := rc.reader.nextToken()
 		if rc.reader.sess.logFlags&logDebug != 0 {
 			rc.reader.sess.logger.Log(rc.reader.ctx, msdsn.LogDebug, fmt.Sprintf("NextResultSet() token type:%v", reflect.TypeOf(tok)))
@@ -1259,42 +1208,23 @@ scan:
 			return io.EOF
 		}
 		switch tokdata := tok.(type) {
-		case doneInProcStruct:
-			tok = (doneStruct)(tokdata)
-		}
-		// ProcessSingleResponse queues a MsgNextResult for every "done" and "server error" token
-		// The only tokens to consume after a "done" should be "done", "server error", or "columns"
-		switch tokdata := tok.(type) {
 		case []columnStruct:
-			rc.cols = tokdata
+			rc.nextCols = tokdata
 			rc.inResultSet = true
 			break scan
 		case doneStruct:
 			if tokdata.Status&doneMore == 0 {
+				rc.nextCols = nil
 				rc.requestDone = true
+				break scan
 			}
-			if tokdata.isError() {
-				e := rc.stmt.c.checkBadConn(rc.reader.ctx, tokdata.getError(), false)
-				switch e.(type) {
-				case Error:
-					// Ignore non-fatal server errors. Fatal errors are of type ServerError
-				default:
-					return e
-				}
-			}
-			rc.inResultSet = false
-			rc.cols = nil
-			break scan
-		case ReturnStatus:
-			if rc.reader.outs.returnStatus != nil {
-				*rc.reader.outs.returnStatus = tokdata
-			}
-		case ServerError:
-			rc.requestDone = true
-			return tokdata
 		}
 	}
-
+	rc.cols = rc.nextCols
+	rc.nextCols = nil
+	if rc.cols == nil {
+		return io.EOF
+	}
 	return nil
 }
 
