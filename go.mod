@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.10.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.18.0
 	github.com/microsoft/kiota-authentication-azure-go v0.3.1
-	github.com/microsoftgraph/msgraph-sdk-go v0.30.0
+	github.com/microsoftgraph/msgraph-sdk-go v0.31.0
 	github.com/stretchr/testify v1.8.0
 )
 
