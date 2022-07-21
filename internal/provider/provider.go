@@ -143,6 +143,7 @@ func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, 
 		"mssql_sql_user":             SqlUserResourceType{},
 		"mssql_database_role":        DatabaseRoleResourceType{},
 		"mssql_database_role_member": DatabaseRoleMemberResourceType{},
+		"mssql_azuread_user":         AzureADUserResourceType{},
 	}, nil
 }
 

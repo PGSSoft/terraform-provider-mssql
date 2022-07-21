@@ -40,7 +40,7 @@ var databaseRoleMemberSetAttributes = map[string]tfsdk.Attribute{
 		Computed:    true,
 	},
 	"type": {
-		Description: "One of: `SQL_USER`, `DATABASE_ROLE`",
+		Description: "One of: `SQL_USER`, `DATABASE_ROLE`, `AZUREAD_USER`",
 		Type:        types.StringType,
 		Computed:    true,
 	},
@@ -93,6 +93,8 @@ func (d databaseRoleDataResourceData) withRoleData(ctx context.Context, role sql
 			return "DATABASE_ROLE"
 		case sql.SQL_USER:
 			return "SQL_USER"
+		case sql.AZUREAD_USER:
+			return "AZUREAD_USER"
 		default:
 			utils.AddError(ctx, "Unknown member type", errors.New(fmt.Sprintf("member type %d unknown", typ)))
 			return ""

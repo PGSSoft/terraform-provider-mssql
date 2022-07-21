@@ -9,6 +9,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0/go.mod h1:bhXu1AjYL+wutS
 github.com/Azure/azure-sdk-for-go/sdk/internal v0.7.0/go.mod h1:yqy467j36fJxcRV2TzfVZ1pCb5vxm4BtZPUdYWe/Xo8=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0 h1:jp0dGvZ7ZK0mgqnTSClMxa5xuRL7NZgHameVYF6BurY=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0/go.mod h1:eWRD7oawr1Mu1sLCawqVc0CUiF43ia3qQMxLscsKQ9w=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v0.7.0 h1:rR7G1rXO+wu0R/fChwkOK2o3tlj8aJXtuyKUfoPpZZA=
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v0.7.0/go.mod h1:FGvMgwsGxvXKLXTsLD6rleZNj7PrpAX5+ou/to9SYOc=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0 h1:rycGPpUtVFwM9uLUL2ux8EL8kGfl3qF1u76aEHvB4Qw=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0/go.mod h1:lirt6L2DmxromyM4w5Vd2QPz4PrWRV38Izy43xgkBVI=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOElx5B5HZ4hJQsoJ/PvUvKRhJHDQXO8P8=

@@ -224,7 +224,7 @@ func (d databaseRole) GetMembers(ctx context.Context) map[GenericDatabasePrincip
 SELECT principal_id, [name], [type] 
 FROM sys.database_principals 
 	INNER JOIN sys.database_role_members ON principal_id = member_principal_id
-WHERE [type] IN ('S', 'R') AND role_principal_id=@p1`, d.id)
+WHERE [type] IN ('S', 'R', 'E', 'X') AND role_principal_id=@p1`, d.id)
 		switch err {
 		case sql.ErrNoRows: //ignore
 		case nil:
@@ -242,6 +242,10 @@ WHERE [type] IN ('S', 'R') AND role_principal_id=@p1`, d.id)
 					role.Type = DATABASE_ROLE
 				case "S":
 					role.Type = SQL_USER
+				case "E":
+					fallthrough
+				case "X":
+					role.Type = AZUREAD_USER
 				}
 
 				res[role.Id] = role

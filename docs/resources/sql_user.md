@@ -44,7 +44,7 @@ output "user_id" {
 ### Required
 
 - `login_id` (String) SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.
-- `name` (String) User name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers) and cannot be longer than 128 chars.
+- `name` (String) User name. Cannot be longer than 128 chars.
 
 ### Optional
 

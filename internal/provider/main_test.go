@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/denisenkom/go-mssqldb/azuread"
@@ -44,7 +45,7 @@ var azureSubscription = os.Getenv("TF_AZURE_SUBSCRIPTION_ID")
 var azureResourceGroup = os.Getenv("TF_AZURE_RESOURCE_GROUP")
 var imgTag = os.Getenv("TF_MSSQL_IMG_TAG")
 var isAzureTest = imgTag == "azure-sql"
-var azureServerName string
+var azureServerName, azureMSIObjectID string
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -134,6 +135,10 @@ func createAzureSQL() {
 	}, nil))
 	sqlHost = *response.Server.Properties.FullyQualifiedDomainName
 	fmt.Fprintln(os.Stdout, "Azure SQL instance created!")
+
+	msiClient := panicOnError(armmsi.NewUserAssignedIdentitiesClient(azureSubscription, token, nil))
+	msi := panicOnError(msiClient.CreateOrUpdate(ctx, azureResourceGroup, azureServerName, armmsi.Identity{Location: response.Location}, nil))
+	azureMSIObjectID = *msi.Properties.PrincipalID
 }
 
 func destroyAzureSQL() {
@@ -141,6 +146,8 @@ func destroyAzureSQL() {
 	token := panicOnError(azidentity.NewDefaultAzureCredential(nil))
 	client := panicOnError(armsql.NewServersClient(azureSubscription, token, nil))
 	panicOnError(client.BeginDelete(ctx, azureResourceGroup, azureServerName, nil))
+	msiClient := panicOnError(armmsi.NewUserAssignedIdentitiesClient(azureSubscription, token, nil))
+	panicOnError(msiClient.Delete(ctx, azureResourceGroup, azureServerName, nil))
 }
 
 func startMSSQL(imgTag string) {

@@ -12,6 +12,8 @@ const EmptyDatabasePrincipalId GenericDatabasePrincipalId = -1
 
 type LoginId string
 
+type AADObjectId string
+
 type DatabasePrincipalId interface {
 	UserId | DatabaseRoleId | GenericDatabasePrincipalId
 }
@@ -34,4 +36,5 @@ const (
 	UNONOWN DatabasePrincipalType = iota
 	SQL_USER
 	DATABASE_ROLE
+	AZUREAD_USER
 )

@@ -14,7 +14,7 @@ var sqlUserAttributes = map[string]tfsdk.Attribute{
 		Type:                types.StringType,
 	},
 	"name": {
-		MarkdownDescription: fmt.Sprintf("User name. %s and cannot be longer than 128 chars.", regularIdentifiersDoc),
+		MarkdownDescription: "User name. Cannot be longer than 128 chars.",
 		Type:                types.StringType,
 		Validators:          validators.UserNameValidators,
 	},
@@ -36,6 +36,7 @@ func (d sqlUserResourceData) toSettings() sql.UserSettings {
 	return sql.UserSettings{
 		Name:    d.Name.Value,
 		LoginId: sql.LoginId(d.LoginId.Value),
+		Type:    sql.USER_TYPE_SQL,
 	}
 }
 
