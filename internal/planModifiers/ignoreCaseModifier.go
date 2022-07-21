@@ -23,10 +23,6 @@ func (m ignoreCaseModifier) MarkdownDescription(ctx context.Context) string {
 }
 
 func (m ignoreCaseModifier) Modify(ctx context.Context, request tfsdk.ModifyAttributePlanRequest, response *tfsdk.ModifyAttributePlanResponse) {
-	if request.AttributeConfig.Type(ctx) != types.StringType {
-		return
-	}
-
 	isNotSet := func(v attr.Value) bool {
 		return v == nil || v.IsNull() || v.IsUnknown()
 	}
@@ -35,10 +31,14 @@ func (m ignoreCaseModifier) Modify(ctx context.Context, request tfsdk.ModifyAttr
 		return
 	}
 
+	if request.AttributePlan.Type(ctx) != types.StringType || request.AttributeState.Type(ctx) != types.StringType {
+		return
+	}
+
 	toString := func(v attr.Value) *string {
 		var strValue string
 
-		value, err := request.AttributeConfig.ToTerraformValue(ctx)
+		value, err := v.ToTerraformValue(ctx)
 		if err == nil {
 			err = value.As(&strValue)
 		}
