@@ -32,7 +32,7 @@ output "id" {
 
 ### Required
 
-- `name` (String) User name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers) and cannot be longer than 128 chars.
+- `name` (String) User name. Cannot be longer than 128 chars.
 
 ### Optional
 
