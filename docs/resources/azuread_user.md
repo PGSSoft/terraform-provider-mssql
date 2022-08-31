@@ -42,7 +42,7 @@ output "user_id" {
 
 - `database_id` (String) ID of database. Can be retrieved using `mssql_database` or `SELECT DB_ID('<db_name>')`.
 - `name` (String) User name. Cannot be longer than 128 chars.
-- `user_object_id` (String) Azure AD object_id of the user. This can be either regular user, group, service principal or managed identity.
+- `user_object_id` (String) Azure AD object_id of the user. This can be either regular user or a group.
 
 ### Read-Only
 
