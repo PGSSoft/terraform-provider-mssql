@@ -23,7 +23,7 @@ var azureADUserAttributes = map[string]tfsdk.Attribute{
 	},
 	"database_id": databaseIdAttribute,
 	"user_object_id": {
-		MarkdownDescription: "Azure AD object_id of the user. This can be either regular user, group, service principal or managed identity.",
+		MarkdownDescription: "Azure AD object_id of the user. This can be either regular user or a group.",
 		Type:                types.StringType,
 	},
 }

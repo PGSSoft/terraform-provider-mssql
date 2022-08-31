@@ -3,11 +3,12 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
 )
 
 func TestAADUserResource(t *testing.T) {
@@ -29,7 +30,7 @@ resource "mssql_azuread_user" %[1]q {
 	database_id = data.mssql_database.%[1]s.id
 	user_object_id = %[3]q
 }
-`, resourceName, name, azureMSIObjectID)
+`, resourceName, name, azureAdTestGroupId)
 	}
 
 	resource.Test(t, resource.TestCase{
@@ -58,7 +59,7 @@ resource "mssql_azuread_user" %[1]q {
 								Scan(&userType, &userSid)
 
 							assert.Equal(t, "E", strings.ToUpper(userType), "user type")
-							assert.Equal(t, strings.ToUpper(azureMSIObjectID), strings.ToUpper(userSid), "user SID")
+							assert.Equal(t, strings.ToUpper(azureAdTestGroupId), strings.ToUpper(userSid), "user SID")
 
 							return err
 						}),

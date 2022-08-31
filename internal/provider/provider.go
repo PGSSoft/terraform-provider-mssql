@@ -157,6 +157,7 @@ func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceTy
 		"mssql_sql_users":      SqlUserListDataSourceType{},
 		"mssql_database_role":  DatabaseRoleDataSourceType{},
 		"mssql_database_roles": DatabaseRoleListDataSourceType{},
+		"mssql_azuread_user":   AzureADUserDataSourceType{},
 	}, nil
 }
 
