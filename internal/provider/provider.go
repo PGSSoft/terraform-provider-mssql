@@ -151,15 +151,16 @@ func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, 
 
 func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
 	return map[string]tfsdk.DataSourceType{
-		"mssql_database":       DatabaseDataSourceType{},
-		"mssql_databases":      DatabaseListDataSourceType{},
-		"mssql_sql_login":      SqlLoginDataSourceType{},
-		"mssql_sql_logins":     SqlLoginListDataSourceType{},
-		"mssql_sql_user":       SqlUserDataSourceType{},
-		"mssql_sql_users":      SqlUserListDataSourceType{},
-		"mssql_database_role":  DatabaseRoleDataSourceType{},
-		"mssql_database_roles": DatabaseRoleListDataSourceType{},
-		"mssql_azuread_user":   AzureADUserDataSourceType{},
+		"mssql_database":                  DatabaseDataSourceType{},
+		"mssql_databases":                 DatabaseListDataSourceType{},
+		"mssql_sql_login":                 SqlLoginDataSourceType{},
+		"mssql_sql_logins":                SqlLoginListDataSourceType{},
+		"mssql_sql_user":                  SqlUserDataSourceType{},
+		"mssql_sql_users":                 SqlUserListDataSourceType{},
+		"mssql_database_role":             DatabaseRoleDataSourceType{},
+		"mssql_database_roles":            DatabaseRoleListDataSourceType{},
+		"mssql_azuread_user":              AzureADUserDataSourceType{},
+		"mssql_azuread_service_principal": AzureADServicePrincipalDataSourceType{},
 	}, nil
 }
 

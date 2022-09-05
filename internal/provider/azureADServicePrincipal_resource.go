@@ -30,11 +30,11 @@ Managed database-level user mapped to Azure AD identity (service principal or ma
 -> **Note** When using this resource, Azure SQL server managed identity does not need any [AzureAD role assignments](https://docs.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-service-principal?view=azuresql).
 `,
 		Attributes: map[string]tfsdk.Attribute{
-			"id":          toResourceId(azureADUserAttributes["id"]),
-			"name":        toRequiredImmutable(azureADUserAttributes["name"]),
-			"database_id": toRequiredImmutable(azureADUserAttributes["database_id"]),
+			"id":          toResourceId(azureADServicePrincipalAttributes["id"]),
+			"name":        toRequiredImmutable(azureADServicePrincipalAttributes["name"]),
+			"database_id": toRequiredImmutable(azureADServicePrincipalAttributes["database_id"]),
 			"client_id": func() tfsdk.Attribute {
-				attr := azureADUserAttributes["client_id"]
+				attr := azureADServicePrincipalAttributes["client_id"]
 				attr.Required = true
 				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
 					planModifiers.IgnoreCase(),

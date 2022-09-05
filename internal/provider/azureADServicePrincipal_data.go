@@ -14,15 +14,15 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = AzureADUserDataSourceType{}
-	_ tfsdk.DataSource     = azureADUserData{}
+	_ tfsdk.DataSourceType = AzureADServicePrincipalDataSourceType{}
+	_ tfsdk.DataSource     = azureADServicePrincipalData{}
 )
 
-type AzureADUserDataSourceType struct{}
+type AzureADServicePrincipalDataSourceType struct{}
 
-func (s AzureADUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (s AzureADServicePrincipalDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{}
-	for n, attr := range azureADUserAttributes {
+	for n, attr := range azureADServicePrincipalAttributes {
 		attr.Required = n == "database_id"
 		attr.Optional = n != "id" && !attr.Required
 		attr.Computed = !attr.Required
@@ -30,31 +30,31 @@ func (s AzureADUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema,
 	}
 
 	return tfsdk.Schema{
-		Description: "Obtains information about single Azure AD database user.",
+		Description: "Obtains information about single Azure AD Service Principal database user.",
 		Attributes:  attrs,
 	}, nil
 }
 
-func (s AzureADUserDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) azureADUserData {
-		return azureADUserData{Resource: base}
+func (s AzureADServicePrincipalDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
+	return newResource(ctx, p, func(base Resource) azureADServicePrincipalData {
+		return azureADServicePrincipalData{Resource: base}
 	})
 }
 
-type azureADUserData struct {
+type azureADServicePrincipalData struct {
 	Resource
 }
 
-func (s azureADUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (s azureADServicePrincipalData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
 	var (
-		data azureADUserResourceData
+		data azureADServicePrincipalResourceData
 		db   sql.Database
 		user sql.User
 	)
 
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADUserResourceData](ctx, request.Config) }).
+		Then(func() { data = utils.GetData[azureADServicePrincipalResourceData](ctx, request.Config) }).
 		Then(func() { db = getResourceDb(ctx, s.Db, data.DatabaseId.Value) }).
 		Then(func() {
 			if !data.Name.IsNull() && !data.Name.IsUnknown() {
@@ -64,13 +64,13 @@ func (s azureADUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceR
 
 			for _, u := range sql.GetUsers(ctx, db) {
 				settings := u.GetSettings(ctx)
-				if settings.Type == sql.USER_TYPE_AZUREAD && strings.EqualFold(fmt.Sprint(settings.AADObjectId), data.UserObjectId.Value) {
+				if settings.Type == sql.USER_TYPE_AZUREAD && strings.EqualFold(fmt.Sprint(settings.AADObjectId), data.ClientId.Value) {
 					user = u
 					return
 				}
 			}
 
-			utils.AddError(ctx, "User does not exist", fmt.Errorf("could not find user with name=%q and object_id=%q", data.Name.Value, data.UserObjectId.Value))
+			utils.AddError(ctx, "User does not exist", fmt.Errorf("could not find user with name=%q and client_id=%q", data.Name.Value, data.ClientId.Value))
 		}).
 		Then(func() {
 			data.Id = types.String{Value: dbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
