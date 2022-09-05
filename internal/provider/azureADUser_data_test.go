@@ -52,7 +52,7 @@ data "mssql_azuread_user" %[1]q {
 			withDBConnection("aad_user_data", func(conn *sql.DB) {
 				_, err := conn.Exec(`
 				DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
-				EXEC(@SQL)`, azureAdTestGroupId)
+				EXEC(@SQL)`, azureAdTestGroupName, azureAdTestGroupId)
 				require.NoError(t, err, "Creating AAD user")
 
 				var userId int

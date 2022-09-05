@@ -48,7 +48,7 @@ var azureAdTestGroupId = os.Getenv("TF_AZURE_AD_TEST_GROUP_ID")
 var azureAdTestGroupName = os.Getenv("TF_AZURE_AD_TEST_GROUP_NAME")
 var imgTag = os.Getenv("TF_MSSQL_IMG_TAG")
 var isAzureTest = imgTag == "azure-sql"
-var azureServerName, azureMSIName, azureMSIObjectID string
+var azureServerName, azureMSIName, azureMSIObjectID, azureMSIClientID string
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -150,6 +150,7 @@ func createAzureSQL() {
 	msiClient := panicOnError(armmsi.NewUserAssignedIdentitiesClient(azureSubscription, token, nil))
 	msi := panicOnError(msiClient.CreateOrUpdate(ctx, azureResourceGroup, azureServerName, armmsi.Identity{Location: response.Location}, nil))
 	azureMSIObjectID = *msi.Properties.PrincipalID
+	azureMSIClientID = *msi.Properties.ClientID
 	azureMSIName = *msi.Name
 }
 
