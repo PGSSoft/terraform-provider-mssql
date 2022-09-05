@@ -116,9 +116,7 @@ func createAzureSQL() {
 		clientId = *me.GetId()
 	}
 
-	serverClient := panicOnError(armsql.NewServersClient(azureSubscription, token, nil))
-
-	request := panicOnError(serverClient.BeginCreateOrUpdate(ctx, azureResourceGroup, azureServerName, armsql.Server{
+	serverParams := armsql.Server{
 		Location: to.Ptr("WestEurope"),
 		Properties: &armsql.ServerProperties{
 			Administrators: &armsql.ServerExternalAdministrator{
@@ -127,7 +125,28 @@ func createAzureSQL() {
 				Login:                     &clientId,
 			},
 		},
-	}, nil))
+	}
+
+	msiClient := panicOnError(armmsi.NewUserAssignedIdentitiesClient(azureSubscription, token, nil))
+	serverMsis := msiClient.NewListByResourceGroupPager(azureResourceGroup, nil)
+
+	if serverMsis.More() {
+		msis := panicOnError(serverMsis.NextPage(ctx))
+		if len(msis.Value) > 0 {
+			msi := msis.Value[0]
+			serverParams.Identity = &armsql.ResourceIdentity{
+				Type: to.Ptr(armsql.IdentityTypeUserAssigned),
+				UserAssignedIdentities: map[string]*armsql.UserIdentity{
+					*msi.ID: {},
+				},
+			}
+			serverParams.Properties.PrimaryUserAssignedIdentityID = msi.ID
+		}
+	}
+
+	serverClient := panicOnError(armsql.NewServersClient(azureSubscription, token, nil))
+
+	request := panicOnError(serverClient.BeginCreateOrUpdate(ctx, azureResourceGroup, azureServerName, serverParams, nil))
 	response := panicOnError(request.PollUntilDone(ctx, nil))
 
 	poolClient := panicOnError(armsql.NewElasticPoolsClient(azureSubscription, token, nil))
@@ -147,7 +166,6 @@ func createAzureSQL() {
 	sqlHost = *response.Server.Properties.FullyQualifiedDomainName
 	fmt.Fprintln(os.Stdout, "Azure SQL instance created!")
 
-	msiClient := panicOnError(armmsi.NewUserAssignedIdentitiesClient(azureSubscription, token, nil))
 	msi := panicOnError(msiClient.CreateOrUpdate(ctx, azureResourceGroup, azureServerName, armmsi.Identity{Location: response.Location}, nil))
 	azureMSIObjectID = *msi.Properties.PrincipalID
 	azureMSIName = *msi.Name
