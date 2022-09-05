@@ -50,7 +50,9 @@ data "mssql_azuread_user" %[1]q {
 		PreCheck: func() {
 			dbId = createDB(t, "aad_user_data")
 			withDBConnection("aad_user_data", func(conn *sql.DB) {
-				_, err := conn.Exec(fmt.Sprintf("CREATE USER [%s] FROM EXTERNAL PROVIDER", azureAdTestGroupName))
+				_, err := conn.Exec(`
+				DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
+				EXEC(@SQL)`, azureAdTestGroupId)
 				require.NoError(t, err, "Creating AAD user")
 
 				var userId int
