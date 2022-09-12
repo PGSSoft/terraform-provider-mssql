@@ -46,6 +46,6 @@ Read-Only:
 - `database_id` (String) ID of database. Can be retrieved using `mssql_database` or `SELECT DB_ID('<db_name>')`.
 - `id` (String) `<database_id>/<user_id>`. User ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<user_name>')`.
 - `login_id` (String) SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.
-- `name` (String) User name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers) and cannot be longer than 128 chars.
+- `name` (String) User name. Cannot be longer than 128 chars.
 
 

@@ -149,7 +149,9 @@ func (s *DatabaseRoleTestSuite) TestRemoveMember() {
 func (s *DatabaseRoleTestSuite) TestGetMembers() {
 	rows := newRows("principal_id", "name", "type").
 		AddRow(135, "test_user", "S").
-		AddRow(263, "test_role", "R")
+		AddRow(263, "test_role", "R").
+		AddRow(252, "test_aad_user", "E").
+		AddRow(12351, "test_aad_group", "X")
 	s.expectMembersQuery().WillReturnRows(rows)
 
 	members := s.role.GetMembers(s.ctx)
@@ -165,6 +167,16 @@ func (s *DatabaseRoleTestSuite) TestGetMembers() {
 			Name: "test_role",
 			Type: DATABASE_ROLE,
 		},
+		252: {
+			Id:   252,
+			Name: "test_aad_user",
+			Type: AZUREAD_USER,
+		},
+		12351: {
+			Id:   12351,
+			Name: "test_aad_group",
+			Type: AZUREAD_USER,
+		},
 	}, members)
 }
 
@@ -173,5 +185,5 @@ func (s *DatabaseRoleTestSuite) expectMembersQuery() *sqlmock.ExpectedQuery {
 SELECT principal_id, [name], [type] 
 FROM sys.database_principals 
 	INNER JOIN sys.database_role_members ON principal_id = member_principal_id
-WHERE [type] IN ('S', 'R') AND role_principal_id=@p1`).WithArgs(s.role.id)
+WHERE [type] IN ('S', 'R', 'E', 'X') AND role_principal_id=@p1`).WithArgs(s.role.id)
 }

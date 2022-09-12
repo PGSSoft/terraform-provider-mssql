@@ -34,3 +34,9 @@ func toRequired(attr tfsdk.Attribute) tfsdk.Attribute {
 	attr.Required = true
 	return attr
 }
+
+func toRequiredImmutable(attr tfsdk.Attribute) tfsdk.Attribute {
+	attr.Required = true
+	attr.PlanModifiers = tfsdk.AttributePlanModifiers{tfsdk.RequiresReplace()}
+	return attr
+}

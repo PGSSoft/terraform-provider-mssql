@@ -51,6 +51,6 @@ Read-Only:
 
 - `id` (String) `<database_id>/<member_id>`. Member ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<member_name>')
 - `name` (String) Name of the database principal.
-- `type` (String) One of: `SQL_USER`, `DATABASE_ROLE`
+- `type` (String) One of: `SQL_USER`, `DATABASE_ROLE`, `AZUREAD_USER`
 
 
