@@ -50,6 +50,10 @@ var imgTag = os.Getenv("TF_MSSQL_IMG_TAG")
 var isAzureTest = imgTag == "azure-sql"
 var azureServerName, azureMSIName, azureMSIObjectID, azureMSIClientID string
 
+const defaultDbName = "acc-test-db"
+
+var defaultDbId int
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 	azureServerName = fmt.Sprintf("tfmssqltest%d", rand.Intn(1000))
@@ -86,6 +90,8 @@ func (r *testRunner) Run() int {
 			defer stopMSSQL()
 		}
 	}
+
+	defaultDbId = panicOnError(createDBCore(defaultDbName))
 
 	return r.m.Run()
 }
@@ -313,6 +319,14 @@ func withDBConnection(dbName string, f func(conn *sql2.DB)) {
 	f(conn)
 }
 
+func withDefaultDBConnection(f func(conn *sql2.DB)) {
+	withDBConnection(defaultDbName, f)
+}
+
+func withMasterDBConnection(f func(conn *sql2.DB)) {
+	withDBConnection("master", f)
+}
+
 func sqlCheck(dbName string, check func(db *sql2.DB) error) resource.TestCheckFunc {
 	return func(*terraform.State) error {
 		db := openDBConnection(dbName)
@@ -322,6 +336,12 @@ func sqlCheck(dbName string, check func(db *sql2.DB) error) resource.TestCheckFu
 }
 
 func createDB(t *testing.T, name string) int {
+	dbId, err := createDBCore(name)
+	require.NoError(t, err, "creating DB")
+	return dbId
+}
+
+func createDBCore(name string) (int, error) {
 	masterConn := openDBConnection("master")
 	defer masterConn.Close()
 
@@ -333,7 +353,22 @@ func createDB(t *testing.T, name string) int {
 	}
 
 	err := masterConn.QueryRow(fmt.Sprintf(`CREATE DATABASE [%[1]s] %[2]s; SELECT database_id FROM sys.databases WHERE [name] = '%[1]s'`, name, dbOptions)).Scan(&dbId)
-	require.NoError(t, err, "creating DB")
 
-	return dbId
+	return dbId, err
+}
+
+func execDB(t *testing.T, dbName string, statementFormat string, args ...any) {
+	withDBConnection(dbName, func(conn *sql2.DB) {
+		stat := fmt.Sprintf(statementFormat, args...)
+		_, err := conn.Exec(stat)
+		require.NoErrorf(t, err, "Failed to execute %q in DB %s", stat, dbName)
+	})
+}
+
+func execDefaultDB(t *testing.T, statementFormat string, args ...any) {
+	execDB(t, defaultDbName, statementFormat, args...)
+}
+
+func execMasterDB(t *testing.T, statementFormat string, args ...any) {
+	execDB(t, "master", statementFormat, args...)
 }

@@ -3,15 +3,16 @@ package provider
 import (
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSqlUserData(t *testing.T) {
-	const dbName = "sql_user_data_test"
-	var dbId, resourceId, userId, loginId string
+	var resourceId, userId, loginId string
+	dbId := fmt.Sprint(defaultDbId)
 
 	newDataResource := func(resourceName string, userName string) string {
 		return fmt.Sprintf(`
@@ -23,7 +24,7 @@ data "mssql_sql_user" %[1]q {
 	name = %[3]q
 	database_id = data.mssql_database.%[1]s.id
 }
-`, resourceName, dbName, userName)
+`, resourceName, defaultDbName, userName)
 	}
 
 	dataChecks := func(resName string) resource.TestCheckFunc {
@@ -35,11 +36,11 @@ data "mssql_sql_user" %[1]q {
 		)
 	}
 
+	defer execMasterDB(t, "DROP LOGIN [test_login_sql_user_data]")
+	defer execDefaultDB(t, "DROP USER [test_user]")
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, dbName))
-		},
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -47,7 +48,7 @@ data "mssql_sql_user" %[1]q {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection("master", func(conn *sql.DB) {
+					withMasterDBConnection(func(conn *sql.DB) {
 						err := conn.QueryRow(`
 CREATE LOGIN [test_login_sql_user_data] WITH PASSWORD='ComplictedPa$$w0rd13';
 SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_login_sql_user_data'
@@ -56,7 +57,7 @@ SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_log
 						require.NoError(t, err, "creating login")
 					})
 
-					withDBConnection(dbName, func(conn *sql.DB) {
+					withDefaultDBConnection(func(conn *sql.DB) {
 						err := conn.QueryRow(`
 CREATE USER [test_user] FOR LOGIN [test_login_sql_user_data];
 SELECT DATABASE_PRINCIPAL_ID('test_user')

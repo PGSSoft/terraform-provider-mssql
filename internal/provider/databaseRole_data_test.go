@@ -3,28 +3,29 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func TestDatabaseRoleData(t *testing.T) {
 	var roleResourceId, ownerResourceId, roleMemberResourceId, userMemberResourceId string
-	var dbId string
+	dbId := fmt.Sprint(defaultDbId)
 
 	newDataResource := func(resourceName string, roleName string) string {
 		return fmt.Sprintf(`
 data "mssql_database" %[1]q {
-	name = "db_role_data_test"
+	name = %[3]q
 }
 
 data "mssql_database_role" %[1]q {
 	name = %[2]q
 	database_id = data.mssql_database.%[1]s.id
 }
-`, resourceName, roleName)
+`, resourceName, roleName, defaultDbName)
 	}
 
 	formatId := func(id int) string { return fmt.Sprintf("%s/%d", dbId, id) }
@@ -43,11 +44,17 @@ data "mssql_database_role" %[1]q {
 		)
 	}
 
+	defer execDefaultDB(t, `
+ALTER ROLE [test_role] DROP MEMBER [test_role_member];
+ALTER ROLE [test_role] DROP MEMBER [test_user_member];
+DROP ROLE [test_role];
+DROP ROLE [test_owner];
+DROP ROLE [test_role_member];
+DROP USER [test_user_member];
+		`)
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, "db_role_data_test"))
-		},
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -55,7 +62,7 @@ data "mssql_database_role" %[1]q {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection("db_role_data_test", func(conn *sql.DB) {
+					withDefaultDBConnection(func(conn *sql.DB) {
 						var roleId, ownerId, roleMemberId, userMemberId int
 
 						err := conn.QueryRow(`
