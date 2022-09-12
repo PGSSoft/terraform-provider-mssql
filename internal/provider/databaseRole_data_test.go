@@ -3,11 +3,12 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func TestDatabaseRoleData(t *testing.T) {
@@ -43,7 +44,7 @@ data "mssql_database_role" %[1]q {
 		)
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "db_role_data_test"))

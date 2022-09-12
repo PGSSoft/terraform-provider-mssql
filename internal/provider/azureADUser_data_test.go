@@ -45,7 +45,7 @@ data "mssql_azuread_user" %[1]q {
 	var userResourceId string
 	var dbId int
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = createDB(t, "aad_user_data")

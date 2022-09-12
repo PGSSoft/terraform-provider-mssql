@@ -3,10 +3,11 @@ package provider
 import (
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSqlUserData(t *testing.T) {
@@ -35,7 +36,7 @@ data "mssql_sql_user" %[1]q {
 		)
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, dbName))

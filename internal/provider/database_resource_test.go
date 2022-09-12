@@ -3,10 +3,11 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestDatabaseResource(t *testing.T) {
@@ -38,7 +39,7 @@ resource "mssql_database" %[1]q {
 		})
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		Steps: []resource.TestStep{
 			{

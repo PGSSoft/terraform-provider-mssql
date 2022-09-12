@@ -3,11 +3,12 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSqlUserResource(t *testing.T) {
@@ -45,7 +46,7 @@ resource "mssql_sql_user" %[1]q {
 `, resourceName, name, loginName)
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "user_test_db"))

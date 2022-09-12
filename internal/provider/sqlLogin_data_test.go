@@ -3,11 +3,12 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func TestSqlLoginData(t *testing.T) {
@@ -22,7 +23,7 @@ data "mssql_sql_login" %[1]q {
 
 	var loginId, dbId string
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, "test_db_login_data"))

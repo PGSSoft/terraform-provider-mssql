@@ -3,11 +3,12 @@ package provider
 import (
 	sql2 "database/sql"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func TestDatabaseData(t *testing.T) {
@@ -22,7 +23,7 @@ data "mssql_database" "test" {
 }`, name)
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = fmt.Sprint(createDB(t, dbSettings.Name))

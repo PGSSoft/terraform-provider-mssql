@@ -3,12 +3,13 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	sql2 "github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSqlLoginResource(t *testing.T) {
@@ -59,7 +60,7 @@ resource "mssql_sql_login" %[1]q {
 
 	var loginId, defaultDbId, defaultLang string
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		Steps: []resource.TestStep{
 			{

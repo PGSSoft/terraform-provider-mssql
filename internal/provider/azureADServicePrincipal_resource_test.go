@@ -33,7 +33,7 @@ resource "mssql_azuread_service_principal" %[1]q {
 `, resourceName, name, azureMSIClientID)
 	}
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
 			dbId = createDB(t, "aad_service_principal_resource")
