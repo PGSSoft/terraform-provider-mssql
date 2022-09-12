@@ -5,7 +5,7 @@ go 1.18
 replace github.com/denisenkom/go-mssqldb v0.12.2 => ./deps/go-mssqldb
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.1
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.3
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v0.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0
