@@ -1,10 +1,11 @@
 package sql
 
 import (
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/suite"
 	"math/rand"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestUserTestSuite(t *testing.T) {
@@ -56,7 +57,7 @@ func (s *UserTestSuite) TestGetSqlUserByName() {
 }
 
 func (s *UserTestSuite) TestGetUsers() {
-	expectExactQuery(s.mock, "SELECT [principal_id] FROM sys.database_principals WHERE [type] = 'S' AND [sid] IS NOT NULL").
+	expectExactQuery(s.mock, "SELECT [principal_id] FROM sys.database_principals WHERE [type] IN ('S', 'E', 'X') AND [sid] IS NOT NULL").
 		WillReturnRows(newRows("id").AddRow(3).AddRow(145))
 
 	users := GetUsers(s.ctx, &s.dbMock)
