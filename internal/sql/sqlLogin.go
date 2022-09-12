@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
+
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
 const NullLoginId LoginId = "<null>"
@@ -164,6 +165,7 @@ func (l sqlLogin) Exists(ctx context.Context) bool {
 func (l sqlLogin) GetSettings(ctx context.Context) SqlLoginSettings {
 	var settings SqlLoginSettings
 	var isMustChange sql.NullBool
+	var password sql.NullString
 
 	err := l.conn.getSqlConnection(ctx).QueryRowContext(ctx, `
 SELECT 
@@ -179,7 +181,7 @@ INNER JOIN sys.databases AS db ON l.default_database_name = db.[name]
 WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`, l.id).
 		Scan(
 			&settings.Name,
-			&settings.Password,
+			&password,
 			&isMustChange,
 			&settings.DefaultDatabaseId,
 			&settings.DefaultLanguage,
@@ -188,8 +190,12 @@ WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`, l.id).
 
 	settings.MustChangePassword = isMustChange.Valid && isMustChange.Bool
 
+	if password.Valid {
+		settings.Password = password.String
+	}
+
 	if err != nil {
-		utils.AddError(ctx, "Failed to retrieve DB settings", err)
+		utils.AddError(ctx, "Failed to retrieve SQL login settings", err)
 	}
 
 	return settings

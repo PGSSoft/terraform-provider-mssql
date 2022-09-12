@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/suite"
 	"math/rand"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestSqlLoginTestSuite(t *testing.T) {
@@ -188,6 +189,25 @@ func (s *SqlLoginTestSuite) TestGetSettings() {
 	}
 	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
 		AddRow(expectedSettings.Name, expectedSettings.Password, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0)
+	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
+
+	settings := s.login.GetSettings(s.ctx)
+
+	s.Equal(expectedSettings, settings)
+}
+
+func (s *SqlLoginTestSuite) TestGetSettingsWithoutPasswordHashPerms() {
+	expectedSettings := SqlLoginSettings{
+		Name:                    "test_name",
+		Password:                "",
+		MustChangePassword:      true,
+		DefaultDatabaseId:       134,
+		DefaultLanguage:         "test_lang",
+		CheckPasswordExpiration: true,
+		CheckPasswordPolicy:     false,
+	}
+	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
+		AddRow(expectedSettings.Name, nil, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0)
 	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
 
 	settings := s.login.GetSettings(s.ctx)
