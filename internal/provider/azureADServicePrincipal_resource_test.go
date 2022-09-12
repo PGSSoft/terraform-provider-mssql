@@ -67,7 +67,7 @@ resource "mssql_azuread_service_principal" %[1]q {
 				),
 			},
 			{
-				ResourceName: "mssql_azuread_user.test_user",
+				ResourceName: "mssql_azuread_service_principal.test_user",
 				ImportState:  true,
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
 					return userResourceId, nil

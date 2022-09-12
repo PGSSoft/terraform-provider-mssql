@@ -75,7 +75,7 @@ data "mssql_azuread_service_principal" %[1]q {
 				Config: configWithName("existing_name", azureMSIName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_service_principal.existing_name", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_name", "user_object_id", strings.ToUpper(azureMSIClientID)),
+					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_name", "client_id", strings.ToUpper(azureMSIClientID)),
 				),
 			},
 			{

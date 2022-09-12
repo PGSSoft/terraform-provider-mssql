@@ -64,7 +64,7 @@ func (s azureADUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceR
 
 			for _, u := range sql.GetUsers(ctx, db) {
 				settings := u.GetSettings(ctx)
-				if settings.Type == sql.USER_TYPE_AZUREAD && strings.EqualFold(fmt.Sprint(settings.AADObjectId), data.UserObjectId.Value) {
+				if settings.Type == sql.USER_TYPE_AZUREAD && strings.ToUpper(fmt.Sprint(settings.AADObjectId)) == strings.ToUpper(data.UserObjectId.Value) {
 					user = u
 					return
 				}

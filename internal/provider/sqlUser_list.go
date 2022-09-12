@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -86,7 +87,9 @@ func (s sqlUserList) Read(ctx context.Context, request tfsdk.ReadDataSourceReque
 			return
 		}
 
-		data.Users = append(data.Users, sqlUserResourceData{}.withIds(dbId, id).withSettings(s))
+		if s.Type == sql.USER_TYPE_SQL {
+			data.Users = append(data.Users, sqlUserResourceData{}.withIds(dbId, id).withSettings(s))
+		}
 	}
 
 	utils.SetData(ctx, &response.State, data)

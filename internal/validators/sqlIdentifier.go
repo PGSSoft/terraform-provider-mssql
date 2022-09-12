@@ -3,9 +3,10 @@ package validators
 import (
 	"context"
 	"fmt"
+	"regexp"
+
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"regexp"
 )
 
 // To ensure validator fully satisfies framework interfaces
@@ -18,7 +19,7 @@ func (s sqlIdentifierValidator) Description(context.Context) string {
 }
 
 func (s sqlIdentifierValidator) MarkdownDescription(context.Context) string {
-	return "SQL identifier allows letters, digits, `@`, `$`, `#` or `_`, start with letter, `_`, `@` or `#`. See [MS SQL docs](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers) for details."
+	return "SQL identifier allows letters, digits, `@`, `$`, `#`, `-` or `_`, start with letter, `_`, `@` or `#`. See [MS SQL docs](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers) for details."
 }
 
 func (s sqlIdentifierValidator) Validate(ctx context.Context, request tfsdk.ValidateAttributeRequest, response *tfsdk.ValidateAttributeResponse) {
@@ -32,7 +33,7 @@ func (s sqlIdentifierValidator) Validate(ctx context.Context, request tfsdk.Vali
 		return
 	}
 
-	if match, _ := regexp.Match("^[a-zA-Z_@#][a-zA-Z\\d@$#_]*$", []byte(str.Value)); !match {
+	if match, _ := regexp.Match("^[a-zA-Z_@#][a-zA-Z\\d@$#_-]*$", []byte(str.Value)); !match {
 		response.Diagnostics.AddAttributeError(
 			request.AttributePath,
 			"Invalid SQL identifier",

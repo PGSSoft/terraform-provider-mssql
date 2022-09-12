@@ -82,7 +82,7 @@ data "mssql_azuread_user" %[1]q {
 				Config: configWithObjectId("existing_id", azureAdTestGroupId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_user.existing_id", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_id", "name", azureMSIName),
+					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_id", "name", azureAdTestGroupName),
 				),
 			},
 		},
