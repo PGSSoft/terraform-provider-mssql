@@ -37,7 +37,7 @@ func (s *databaseList) Configure(ctx context.Context, req datasource.ConfigureRe
 }
 
 func (s databaseList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "mssql_database"
+	resp.TypeName = "mssql_databases"
 }
 
 func (l databaseList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
