@@ -3,21 +3,23 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestDatabaseRoleListData(t *testing.T) {
 	var roleResourceId, ownerResourceId string
-	var dbId string
+
+	defer execDefaultDB(t, `
+DROP ROLE [test_role];
+DROP ROLE [test_owner];
+		`)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, "db_role_list_test"))
-		},
 		Steps: []resource.TestStep{
 			{
 				Config: `data "mssql_database_roles" "master" {}`,
@@ -30,7 +32,7 @@ func TestDatabaseRoleListData(t *testing.T) {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection("db_role_list_test", func(conn *sql.DB) {
+					withDefaultDBConnection(func(conn *sql.DB) {
 						var roleId, ownerId int
 						err := conn.QueryRow(`
 CREATE ROLE test_owner;
@@ -40,24 +42,24 @@ SELECT DATABASE_PRINCIPAL_ID('test_role'), DATABASE_PRINCIPAL_ID('test_owner');
 
 						require.NoError(t, err, "creating role")
 
-						roleResourceId = fmt.Sprintf("%s/%d", dbId, roleId)
-						ownerResourceId = fmt.Sprintf("%s/%d", dbId, ownerId)
+						roleResourceId = fmt.Sprintf("%d/%d", defaultDbId, roleId)
+						ownerResourceId = fmt.Sprintf("%d/%d", defaultDbId, ownerId)
 					})
 				},
-				Config: `
+				Config: fmt.Sprintf(`
 data "mssql_database" "test" {
-	name = "db_role_list_test"
+	name = %[1]q
 }
 
 data "mssql_database_roles" "test" {
 	database_id = data.mssql_database.test.id
 }
-`,
+`, defaultDbName),
 				Check: func(state *terraform.State) error {
 					return resource.TestCheckTypeSetElemNestedAttrs("data.mssql_database_roles.test", "roles.*", map[string]string{
 						"id":          roleResourceId,
 						"name":        "test_role",
-						"database_id": dbId,
+						"database_id": fmt.Sprint(defaultDbId),
 						"owner_id":    ownerResourceId,
 					})(state)
 				},

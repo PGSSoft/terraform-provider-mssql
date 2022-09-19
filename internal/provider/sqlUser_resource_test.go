@@ -3,15 +3,16 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSqlUserResource(t *testing.T) {
-	var dbId, userId, resourceId, loginId string
+	var userId, resourceId, loginId string
 
 	var createLogin = func(loginName string) string {
 		db := openDBConnection("master")
@@ -30,7 +31,7 @@ func TestSqlUserResource(t *testing.T) {
 	var newResource = func(resourceName string, name string, loginName string) string {
 		return fmt.Sprintf(`
 data "mssql_database" %[1]q {
-	name = "user_test_db"
+	name = %[4]q
 }
 
 data "mssql_sql_login" %[1]q {
@@ -42,14 +43,16 @@ resource "mssql_sql_user" %[1]q {
 	database_id = data.mssql_database.%[1]s.id
 	login_id = data.mssql_sql_login.%[1]s.id
 }
-`, resourceName, name, loginName)
+`, resourceName, name, loginName, defaultDbName)
 	}
+
+	defer execMasterDB(t, `
+DROP LOGIN [sqluser_test_login];
+DROP LOGIN [renamed_login];
+	`)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, "user_test_db"))
-		},
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
@@ -57,21 +60,21 @@ resource "mssql_sql_user" %[1]q {
 				},
 				Config: newResource("test_user", "test_user", "sqluser_test_login"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("user_test_db", func(db *sql.DB) error {
+					sqlCheck(defaultDbName, func(db *sql.DB) error {
 						if err := db.QueryRow("SELECT USER_ID(@p1)", "test_user").Scan(&userId); err != nil {
 							return err
 						}
 
-						resourceId = fmt.Sprintf("%s/%s", dbId, userId)
+						resourceId = fmt.Sprintf("%d/%s", defaultDbId, userId)
 
 						return nil
 					}),
 					resource.ComposeAggregateTestCheckFunc(
 						resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "id", &resourceId),
-						resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "database_id", &dbId),
+						resource.TestCheckResourceAttr("mssql_sql_user.test_user", "database_id", fmt.Sprint(defaultDbId)),
 						resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "login_id", &loginId),
 						resource.TestCheckResourceAttr("mssql_sql_user.test_user", "name", "test_user"),
-						sqlCheck("user_test_db", func(db *sql.DB) error {
+						sqlCheck(defaultDbName, func(db *sql.DB) error {
 							var actualLoginId string
 							err := db.QueryRow("SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualLoginId)
 
@@ -91,7 +94,7 @@ resource "mssql_sql_user" %[1]q {
 					resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "id", &resourceId),
 					resource.TestCheckResourceAttrPtr("mssql_sql_user.test_user", "login_id", &loginId),
 					resource.TestCheckResourceAttr("mssql_sql_user.test_user", "name", "renamed_user"),
-					sqlCheck("user_test_db", func(db *sql.DB) error {
+					sqlCheck(defaultDbName, func(db *sql.DB) error {
 						var actualName, actualLoginId string
 						err := db.QueryRow("SELECT [name], CONVERT(VARCHAR(85), [sid], 1) FROM sys.database_principals WHERE principal_id=@p1", userId).Scan(&actualName, &actualLoginId)
 

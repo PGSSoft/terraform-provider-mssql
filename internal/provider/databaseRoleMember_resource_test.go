@@ -3,20 +3,20 @@ package provider
 import (
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"regexp"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestDatabaseRoleMemberResource(t *testing.T) {
 	var resourceId string
-	var dbId int
 
 	newResource := func(resourceName string, roleName string, memberName string) string {
 		return fmt.Sprintf(`
 data "mssql_database" %[3]q {
-	name = "db_role_member_test"
+	name = %[4]q
 }
 
 resource "mssql_database_role" %[3]q {
@@ -33,12 +33,12 @@ resource "mssql_database_role_member" %[1]q {
 	role_id = mssql_database_role.%[1]s.id
 	member_id = mssql_database_role.%[3]s.id
 }
-`, resourceName, roleName, memberName)
+`, resourceName, roleName, memberName, defaultDbName)
 	}
 
 	checkMembership := func(roleName string, memberName string) resource.TestCheckFunc {
 		return resource.ComposeTestCheckFunc(
-			sqlCheck("db_role_member_test", func(db *sql.DB) error {
+			sqlCheck(defaultDbName, func(db *sql.DB) error {
 				var roleId, memberId int
 
 				err := db.QueryRow("SELECT DATABASE_PRINCIPAL_ID(@p1), DATABASE_PRINCIPAL_ID(@p2)", roleName, memberName).
@@ -47,7 +47,7 @@ resource "mssql_database_role_member" %[1]q {
 					return err
 				}
 
-				resourceId = fmt.Sprintf("%d/%d/%d", dbId, roleId, memberId)
+				resourceId = fmt.Sprintf("%d/%d/%d", defaultDbId, roleId, memberId)
 
 				return db.QueryRow("SELECT 1 FROM sys.database_role_members WHERE role_principal_id = @p1 AND member_principal_id = @p2", roleId, memberId).Err()
 			}),
@@ -57,9 +57,6 @@ resource "mssql_database_role_member" %[1]q {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = createDB(t, "db_role_member_test")
-		},
 		Steps: []resource.TestStep{
 			{
 				Config: newResource("new_resource", "test_role", "test_member"),
@@ -78,9 +75,9 @@ resource "mssql_database_role_member" %[1]q {
 				ImportStateVerify: true,
 			},
 			{
-				Config: `
+				Config: fmt.Sprintf(`
 data "mssql_database" "invalid" {
-	name = "db_role_member_test"
+	name = %[1]q
 }
 
 data "mssql_database_role" "public" {
@@ -96,7 +93,7 @@ resource "mssql_database_role_member" "invalid" {
 	member_id = mssql_database_role.invalid_membership.id
 	role_id = data.mssql_database_role.public.id
 }
-`,
+`, defaultDbName),
 				ExpectError: regexp.MustCompile("same database"),
 			},
 		},

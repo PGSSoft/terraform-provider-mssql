@@ -3,11 +3,12 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func TestSqlLoginData(t *testing.T) {
@@ -20,13 +21,12 @@ data "mssql_sql_login" %[1]q {
 `, resourceName, loginName)
 	}
 
-	var loginId, dbId string
+	var loginId string
+
+	defer execMasterDB(t, "DROP LOGIN [test_login]")
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, "test_db_login_data"))
-		},
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -34,8 +34,8 @@ data "mssql_sql_login" %[1]q {
 			},
 			{
 				PreConfig: func() {
-					withDBConnection("master", func(conn *sql.DB) {
-						loginOptions := " MUST_CHANGE, CHECK_EXPIRATION=ON, CHECK_POLICY=ON, DEFAULT_LANGUAGE=[polish], DEFAULT_DATABASE=[test_db_login_data]"
+					withMasterDBConnection(func(conn *sql.DB) {
+						loginOptions := fmt.Sprintf(" MUST_CHANGE, CHECK_EXPIRATION=ON, CHECK_POLICY=ON, DEFAULT_LANGUAGE=[polish], DEFAULT_DATABASE=[%s]", defaultDbName)
 						if isAzureTest {
 							loginOptions = ""
 						}
@@ -57,7 +57,7 @@ data "mssql_sql_login" %[1]q {
 
 						return resource.ComposeAggregateTestCheckFunc(
 							resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "must_change_password", "true"),
-							resource.TestCheckResourceAttrPtr("data.mssql_sql_login.exists", "default_database_id", &dbId),
+							resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "default_database_id", fmt.Sprint(defaultDbId)),
 							resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "default_language", "polish"),
 							resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "check_password_expiration", "true"),
 							resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "check_password_policy", "true"),

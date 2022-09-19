@@ -19,37 +19,37 @@ func TestAzureADUserData(t *testing.T) {
 	configWithName := func(resourceName string, userName string) string {
 		return fmt.Sprintf(`
 data "mssql_database" %[1]q {
-	name = "aad_user_data"
+	name = %[3]q
 }
 
 data "mssql_azuread_user" %[1]q {
 	name 		= %[2]q
 	database_id = data.mssql_database.%[1]s.id
 }
-`, resourceName, userName)
+`, resourceName, userName, defaultDbName)
 	}
 
 	configWithObjectId := func(resourceName string, objectId string) string {
 		return fmt.Sprintf(`
 data "mssql_database" %[1]q {
-	name = "aad_user_data"
+	name = %[3]q
 }
 
 data "mssql_azuread_user" %[1]q {
 	user_object_id 	= %[2]q
 	database_id		= data.mssql_database.%[1]s.id
 }
-`, resourceName, objectId)
+`, resourceName, objectId, defaultDbName)
 	}
 
 	var userResourceId string
-	var dbId int
+
+	defer execDefaultDB(t, "DROP USER [%s]", azureAdTestGroupName)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
-			dbId = createDB(t, "aad_user_data")
-			withDBConnection("aad_user_data", func(conn *sql.DB) {
+			withDefaultDBConnection(func(conn *sql.DB) {
 				_, err := conn.Exec(`
 				DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
 				EXEC(@SQL)`, azureAdTestGroupName, azureAdTestGroupId)
@@ -59,7 +59,7 @@ data "mssql_azuread_user" %[1]q {
 				err = conn.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name]=@p1", azureAdTestGroupName).Scan(&userId)
 				require.NoError(t, err, "Fetching AAD user ID")
 
-				userResourceId = fmt.Sprintf("%d/%d", dbId, userId)
+				userResourceId = fmt.Sprintf("%d/%d", defaultDbId, userId)
 			})
 		},
 		Steps: []resource.TestStep{

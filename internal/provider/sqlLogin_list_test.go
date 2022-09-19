@@ -2,19 +2,22 @@ package provider
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSqlLoginListData(t *testing.T) {
 	var loginId string
 
+	defer execMasterDB(t, "DROP LOGIN [test_sql_login_list]")
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
 		PreCheck: func() {
-			withDBConnection("master", func(conn *sql.DB) {
+			withMasterDBConnection(func(conn *sql.DB) {
 				err := conn.QueryRow(`
 CREATE LOGIN [test_sql_login_list] WITH PASSWORD='Str0ngPa$$w0rd124';
 SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_sql_login_list'

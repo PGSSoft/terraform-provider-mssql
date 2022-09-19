@@ -3,12 +3,13 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
 	sql2 "github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSqlLoginResource(t *testing.T) {
@@ -57,7 +58,7 @@ resource "mssql_sql_login" %[1]q {
 			loginAttributes)
 	}
 
-	var loginId, defaultDbId, defaultLang string
+	var loginId, defaultLang, loginDefaultDbId string
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: newProviderFactories(),
@@ -69,7 +70,7 @@ resource "mssql_sql_login" %[1]q {
 						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1), DB_ID(default_database_name), default_language_name 
 													FROM sys.sql_logins 
 													WHERE [name] = 'login1'`).
-							Scan(&loginId, &defaultDbId, &defaultLang)
+							Scan(&loginId, &loginDefaultDbId, &defaultLang)
 					}),
 					resource.ComposeAggregateTestCheckFunc(
 						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login", "id", &loginId),
@@ -98,9 +99,6 @@ resource "mssql_sql_login" %[1]q {
 				),
 			},
 			{
-				PreConfig: func() {
-					defaultDbId = fmt.Sprint(createDB(t, "test_db_login"))
-				},
 				Config: newResource("test_login_full", sql2.SqlLoginSettings{
 					Name:                    "login2",
 					Password:                "Str0ngPa$$w0rd124",
@@ -108,7 +106,7 @@ resource "mssql_sql_login" %[1]q {
 					CheckPasswordExpiration: false,
 					DefaultLanguage:         "polish",
 					MustChangePassword:      false,
-				}, "test_db_login"),
+				}, defaultDbName),
 				Check: resource.ComposeTestCheckFunc(
 					sqlCheck("master", func(db *sql.DB) error {
 						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1) 
@@ -129,7 +127,7 @@ resource "mssql_sql_login" %[1]q {
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "must_change_password", "false"),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_expiration", "false"),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_policy", "false"),
-								resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "default_database_id", &defaultDbId),
+								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(defaultDbId)),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_language", "polish"),
 								sqlCheck("master", func(db *sql.DB) error {
 									var mustChangePassword, checkPasswordExpiration, checkPasswordPolicy bool
@@ -144,7 +142,7 @@ resource "mssql_sql_login" %[1]q {
 									assert.False(t, mustChangePassword, "must_change_password")
 									assert.False(t, checkPasswordExpiration, "check_password_expiration")
 									assert.False(t, checkPasswordPolicy, "check_password_policy")
-									assert.Equal(t, "test_db_login", defaultDb, "default_database_id")
+									assert.Equal(t, defaultDbName, defaultDb, "default_database_id")
 									assert.Equal(t, "polish", defaultLang)
 
 									return err
@@ -154,9 +152,6 @@ resource "mssql_sql_login" %[1]q {
 				),
 			},
 			{
-				PreConfig: func() {
-					defaultDbId = fmt.Sprint(createDB(t, "test_db_login_2"))
-				},
 				Config: newResource("test_login_full", sql2.SqlLoginSettings{
 					Name:                    "login3",
 					Password:                "Test_password1234$",
@@ -164,7 +159,7 @@ resource "mssql_sql_login" %[1]q {
 					CheckPasswordExpiration: true,
 					DefaultLanguage:         "english",
 					MustChangePassword:      true,
-				}, "test_db_login_2"),
+				}, defaultDbName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "id", &loginId),
 					resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "name", "login3"),
@@ -178,7 +173,7 @@ resource "mssql_sql_login" %[1]q {
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "must_change_password", "true"),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_expiration", "true"),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_policy", "true"),
-							resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "default_database_id", &defaultDbId),
+							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(defaultDbId)),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_language", "english"),
 							sqlCheck("master", func(db *sql.DB) error {
 								var mustChangePassword, checkPasswordExpiration, checkPasswordPolicy bool
@@ -195,7 +190,7 @@ resource "mssql_sql_login" %[1]q {
 								assert.True(t, mustChangePassword, "must_change_password")
 								assert.True(t, checkPasswordExpiration, "check_password_expiration")
 								assert.True(t, checkPasswordPolicy, "check_password_policy")
-								assert.Equal(t, "test_db_login_2", defaultDb, "default_database_id")
+								assert.Equal(t, defaultDbName, defaultDb, "default_database_id")
 								assert.Equal(t, "english", defaultLang, "default_language")
 
 								return err
