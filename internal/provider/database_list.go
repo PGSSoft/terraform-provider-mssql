@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -12,13 +14,33 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = DatabaseListDataSourceType{}
-	_ tfsdk.DataSource     = databaseList{}
+	_ datasource.DataSourceWithConfigure = &databaseList{}
 )
 
-type DatabaseListDataSourceType struct{}
+type databaseListData struct {
+	Id        types.String           `tfsdk:"id"`
+	Databases []databaseResourceData `tfsdk:"databases"`
+}
 
-func (l DatabaseListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+type databaseList struct {
+	Resource
+}
+
+func (p mssqlProvider) NewDatabaseListDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return databaseList{}
+	}
+}
+
+func (s *databaseList) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s databaseList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_database"
+}
+
+func (l databaseList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attribute := range databaseAttributes {
 		attribute.Computed = true
@@ -42,17 +64,7 @@ func (l DatabaseListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, di
 	}, nil
 }
 
-func (l DatabaseListDataSourceType) NewDataSource(ctx context.Context, provider tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, provider, func(base Resource) databaseList {
-		return databaseList{Resource: base}
-	})
-}
-
-type databaseList struct {
-	Resource
-}
-
-func (l databaseList) Read(ctx context.Context, _ tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (l databaseList) Read(ctx context.Context, _ datasource.ReadRequest, response *datasource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	dbs := sql.GetDatabases(ctx, l.Db)
@@ -77,9 +89,4 @@ func (l databaseList) Read(ctx context.Context, _ tfsdk.ReadDataSourceRequest, r
 	}
 
 	utils.SetData(ctx, &response.State, result)
-}
-
-type databaseListData struct {
-	Id        types.String           `tfsdk:"id"`
-	Databases []databaseResourceData `tfsdk:"databases"`
 }

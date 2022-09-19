@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -12,13 +14,28 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = SqlLoginListDataSourceType{}
-	_ tfsdk.DataSource     = sqlLoginList{}
+	_ datasource.DataSourceWithConfigure = &sqlLoginList{}
 )
 
-type SqlLoginListDataSourceType struct{}
+type sqlLoginList struct {
+	Resource
+}
 
-func (l SqlLoginListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewSqlLoginListDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return sqlLoginList{}
+	}
+}
+
+func (s *sqlLoginList) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s sqlLoginList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_sql_logins"
+}
+
+func (l sqlLoginList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attribute := range sqlLoginAttributes {
 		attribute.Computed = true
@@ -42,17 +59,7 @@ func (l SqlLoginListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, di
 	}, nil
 }
 
-func (l SqlLoginListDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) sqlLoginList {
-		return sqlLoginList{Resource: base}
-	})
-}
-
-type sqlLoginList struct {
-	Resource
-}
-
-func (l sqlLoginList) Read(ctx context.Context, _ tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (l sqlLoginList) Read(ctx context.Context, _ datasource.ReadRequest, response *datasource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	logins := sql.GetSqlLogins(ctx, l.Db)

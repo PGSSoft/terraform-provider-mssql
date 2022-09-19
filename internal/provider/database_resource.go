@@ -3,24 +3,41 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = DatabaseResourceType{}
-	_ tfsdk.Resource                = databaseResource{}
-	_ tfsdk.ResourceWithImportState = databaseResource{}
+	_ resource.ResourceWithConfigure   = &databaseResource{}
+	_ resource.ResourceWithImportState = databaseResource{}
 )
 
-type DatabaseResourceType struct{}
+type databaseResource struct {
+	Resource
+}
 
-func (d DatabaseResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewDatabaseResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &databaseResource{}
+	}
+}
+
+func (s databaseResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_database"
+}
+
+func (r *databaseResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (d databaseResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Description: "Manages single database.",
 		Attributes: map[string]tfsdk.Attribute{
@@ -37,17 +54,7 @@ func (d DatabaseResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	}, nil
 }
 
-func (d DatabaseResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) databaseResource {
-		return databaseResource{Resource: base}
-	})
-}
-
-type databaseResource struct {
-	Resource
-}
-
-func (d databaseResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (d databaseResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data, _ := getDB(ctx, request.Plan)
 	if utils.HasError(ctx) {
@@ -69,7 +76,7 @@ func (d databaseResource) Create(ctx context.Context, request tfsdk.CreateResour
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (d databaseResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (d databaseResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data, dbId := getDB(ctx, request.State)
 	if utils.HasError(ctx) {
@@ -97,7 +104,7 @@ func (d databaseResource) Read(ctx context.Context, request tfsdk.ReadResourceRe
 	utils.SetData(ctx, &response.State, data.withSettings(dbSettings))
 }
 
-func (d databaseResource) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
+func (d databaseResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	state, dbId := getDB(ctx, request.State)
 	plan := utils.GetData[databaseResourceData](ctx, request.Plan)
@@ -131,7 +138,7 @@ func (d databaseResource) Update(ctx context.Context, request tfsdk.UpdateResour
 	utils.SetData(ctx, &response.State, plan.withSettings(settings))
 }
 
-func (d databaseResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (d databaseResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	_, dbId := getDB(ctx, request.State)
 	if utils.HasError(ctx) {
@@ -151,6 +158,6 @@ func (d databaseResource) Delete(ctx context.Context, request tfsdk.DeleteResour
 	response.State.RemoveResource(ctx)
 }
 
-func (d databaseResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (d databaseResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }

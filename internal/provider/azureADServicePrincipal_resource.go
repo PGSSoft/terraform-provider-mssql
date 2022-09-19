@@ -8,21 +8,37 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = AzureADServicePrincipalResourceType{}
-	_ tfsdk.Resource                = azureADServicePrincipalResource{}
-	_ tfsdk.ResourceWithImportState = azureADServicePrincipalResource{}
+	_ resource.ResourceWithImportState = azureADServicePrincipalResource{}
+	_ resource.ResourceWithConfigure   = &azureADServicePrincipalResource{}
 )
 
-type AzureADServicePrincipalResourceType struct{}
+type azureADServicePrincipalResource struct {
+	Resource
+}
 
-func (r AzureADServicePrincipalResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewAzureADServicePrincipalResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &azureADServicePrincipalResource{}
+	}
+}
+
+func (s azureADServicePrincipalResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_azuread_service_principal"
+}
+
+func (r *azureADServicePrincipalResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (r azureADServicePrincipalResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		MarkdownDescription: `
 Managed database-level user mapped to Azure AD identity (service principal or managed identity).
@@ -38,7 +54,7 @@ Managed database-level user mapped to Azure AD identity (service principal or ma
 				attr.Required = true
 				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
 					planModifiers.IgnoreCase(),
-					tfsdk.RequiresReplace(),
+					resource.RequiresReplace(),
 				}
 
 				return attr
@@ -47,17 +63,7 @@ Managed database-level user mapped to Azure AD identity (service principal or ma
 	}, nil
 }
 
-func (r AzureADServicePrincipalResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) azureADServicePrincipalResource {
-		return azureADServicePrincipalResource{Resource: base}
-	})
-}
-
-type azureADServicePrincipalResource struct {
-	Resource
-}
-
-func (r azureADServicePrincipalResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (r azureADServicePrincipalResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	var (
 		data azureADServicePrincipalResourceData
 		db   sql.Database
@@ -75,7 +81,7 @@ func (r azureADServicePrincipalResource) Create(ctx context.Context, request tfs
 		Then(func() { utils.SetData(ctx, &response.State, data) })
 }
 
-func (r azureADServicePrincipalResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (r azureADServicePrincipalResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	var (
 		data azureADServicePrincipalResourceData
 		id   dbObjectId[sql.UserId]
@@ -96,11 +102,11 @@ func (r azureADServicePrincipalResource) Read(ctx context.Context, request tfsdk
 		Then(func() { utils.SetData(ctx, &response.State, data) })
 }
 
-func (r azureADServicePrincipalResource) Update(context.Context, tfsdk.UpdateResourceRequest, *tfsdk.UpdateResourceResponse) {
+func (r azureADServicePrincipalResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
 	panic("not supported")
 }
 
-func (r azureADServicePrincipalResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (r azureADServicePrincipalResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	var (
 		data azureADServicePrincipalResourceData
 		id   dbObjectId[sql.UserId]
@@ -120,6 +126,6 @@ func (r azureADServicePrincipalResource) Delete(ctx context.Context, request tfs
 		Then(func() { response.State.RemoveResource(ctx) })
 }
 
-func (r azureADServicePrincipalResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (r azureADServicePrincipalResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }

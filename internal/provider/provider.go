@@ -5,15 +5,17 @@ import (
 	"fmt"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // To ensure provider fully satisfies framework interfaces
 var (
-	_ tfsdk.Provider  = &provider{}
-	_ resourceFactory = &provider{}
+	_ provider.Provider = &mssqlProvider{}
 )
 
 const (
@@ -24,12 +26,18 @@ const (
 const regularIdentifiersDoc = "Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)"
 
 type Resource struct {
-	Version string
-	Db      sql.Connection
+	Db sql.Connection
 }
 
-type resourceFactory interface {
-	NewResource() Resource
+func (r *Resource) Configure(_ context.Context, data any, diag *diag.Diagnostics) {
+	db, ok := data.(sql.Connection)
+
+	if !ok {
+		diag.AddError("Unexpected data source configure type", fmt.Sprintf("Expected sql.Connection, got: %T. Please report this issue to the provider developers.", data))
+		return
+	}
+
+	r.Db = db
 }
 
 type sqlAuth struct {
@@ -110,12 +118,12 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 	return connDetails, diags
 }
 
-type provider struct {
+type mssqlProvider struct {
 	Version string
 	Db      sql.Connection
 }
 
-func (p *provider) Configure(ctx context.Context, request tfsdk.ConfigureProviderRequest, response *tfsdk.ConfigureProviderResponse) {
+func (p *mssqlProvider) Configure(ctx context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
 	if p.Version == VersionTest {
 		return
 	}
@@ -135,36 +143,39 @@ func (p *provider) Configure(ctx context.Context, request tfsdk.ConfigureProvide
 
 	p.Db, diags = connDetails.Open(ctx)
 	response.Diagnostics.Append(diags...)
+
+	response.DataSourceData = p.Db
+	response.ResourceData = p.Db
 }
 
-func (p provider) GetResources(context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return map[string]tfsdk.ResourceType{
-		"mssql_database":                  DatabaseResourceType{},
-		"mssql_sql_login":                 SqlLoginResourceType{},
-		"mssql_sql_user":                  SqlUserResourceType{},
-		"mssql_database_role":             DatabaseRoleResourceType{},
-		"mssql_database_role_member":      DatabaseRoleMemberResourceType{},
-		"mssql_azuread_user":              AzureADUserResourceType{},
-		"mssql_azuread_service_principal": AzureADServicePrincipalResourceType{},
-	}, nil
+func (p mssqlProvider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		p.NewAzureADServicePrincipalResource(),
+		p.NewAzureADUserResource(),
+		p.NewDatabaseResource(),
+		p.NewDatabaseRoleResource(),
+		p.NewDatabaseRoleMemberResource(),
+		p.NewSqlLoginResource(),
+		p.NewSqlUserResource(),
+	}
 }
 
-func (p provider) GetDataSources(context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-	return map[string]tfsdk.DataSourceType{
-		"mssql_database":                  DatabaseDataSourceType{},
-		"mssql_databases":                 DatabaseListDataSourceType{},
-		"mssql_sql_login":                 SqlLoginDataSourceType{},
-		"mssql_sql_logins":                SqlLoginListDataSourceType{},
-		"mssql_sql_user":                  SqlUserDataSourceType{},
-		"mssql_sql_users":                 SqlUserListDataSourceType{},
-		"mssql_database_role":             DatabaseRoleDataSourceType{},
-		"mssql_database_roles":            DatabaseRoleListDataSourceType{},
-		"mssql_azuread_user":              AzureADUserDataSourceType{},
-		"mssql_azuread_service_principal": AzureADServicePrincipalDataSourceType{},
-	}, nil
+func (p mssqlProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		p.NewAzureADServicePrincipalDataSource(),
+		p.NewAzureADUserDataSource(),
+		p.NewDatabaseDataSource(),
+		p.NewDatabaseListDataSource(),
+		p.NewDatabaseRoleDataSource(),
+		p.NewDatabaseRoleListDataSource(),
+		p.NewSqlLoginDataSource(),
+		p.NewSqlLoginListDataSource(),
+		p.NewSqlUserDataSource(),
+		p.NewSqlUserListDataSource(),
+	}
 }
 
-func (p provider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	if p.Version == VersionTest {
 		return tfsdk.Schema{}, nil
 	}
@@ -224,43 +235,10 @@ func (p provider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	}, nil
 }
 
-func New(version string) func() tfsdk.Provider {
-	return func() tfsdk.Provider {
-		return &provider{
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &mssqlProvider{
 			Version: version,
 		}
 	}
-}
-
-func (p *provider) NewResource() Resource {
-	return Resource{
-		Version: p.Version,
-		Db:      p.Db,
-	}
-}
-
-func convertProviderType(in tfsdk.Provider) (resourceFactory, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	p, ok := in.(resourceFactory)
-
-	if !ok {
-		diags.AddError("Unexpected provider instance type", fmt.Sprintf("Unexpected provider type (%T). This is bug in the provider code and should be reported", p))
-	}
-
-	if p == nil {
-		diags.AddError("Unexpected empty provider instance", "Unexpected empty provider instance. This is bug in the provider code and should be reported")
-	}
-
-	return p, diags
-}
-
-func newResource[T any](_ context.Context, in tfsdk.Provider, ctor func(base Resource) T) (T, diag.Diagnostics) {
-	p, diags := convertProviderType(in)
-	if diags.HasError() {
-		var result T
-		return result, diags
-	}
-
-	return ctor(p.NewResource()), diags
 }

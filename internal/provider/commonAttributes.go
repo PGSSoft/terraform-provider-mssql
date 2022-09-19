@@ -2,6 +2,8 @@ package provider
 
 import (
 	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -18,14 +20,14 @@ func init() {
 	databaseIdResourceAttribute.Computed = true
 	databaseIdResourceAttribute.MarkdownDescription += " Defaults to ID of `master`."
 	databaseIdResourceAttribute.PlanModifiers = tfsdk.AttributePlanModifiers{
-		tfsdk.RequiresReplace(),
+		resource.RequiresReplace(),
 	}
 }
 
 func toResourceId(attr tfsdk.Attribute) tfsdk.Attribute {
 	attr.Computed = true
 	attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-		tfsdk.UseStateForUnknown(),
+		resource.UseStateForUnknown(),
 	}
 	return attr
 }
@@ -37,6 +39,6 @@ func toRequired(attr tfsdk.Attribute) tfsdk.Attribute {
 
 func toRequiredImmutable(attr tfsdk.Attribute) tfsdk.Attribute {
 	attr.Required = true
-	attr.PlanModifiers = tfsdk.AttributePlanModifiers{tfsdk.RequiresReplace()}
+	attr.PlanModifiers = tfsdk.AttributePlanModifiers{resource.RequiresReplace()}
 	return attr
 }
