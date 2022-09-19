@@ -124,25 +124,23 @@ type mssqlProvider struct {
 }
 
 func (p *mssqlProvider) Configure(ctx context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
-	if p.Version == VersionTest {
-		return
+	if p.Version != VersionTest {
+		var data providerData
+		diags := request.Config.Get(ctx, &data)
+
+		if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
+			return
+		}
+
+		connDetails, diags := data.asConnectionDetails(ctx)
+
+		if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
+			return
+		}
+
+		p.Db, diags = connDetails.Open(ctx)
+		response.Diagnostics.Append(diags...)
 	}
-
-	var data providerData
-	diags := request.Config.Get(ctx, &data)
-
-	if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
-		return
-	}
-
-	connDetails, diags := data.asConnectionDetails(ctx)
-
-	if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
-		return
-	}
-
-	p.Db, diags = connDetails.Open(ctx)
-	response.Diagnostics.Append(diags...)
 
 	response.DataSourceData = p.Db
 	response.ResourceData = p.Db
