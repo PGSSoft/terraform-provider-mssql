@@ -24,7 +24,7 @@ type azureADUserData struct {
 
 func (p mssqlProvider) NewAzureADUserDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return azureADUserData{}
+		return &azureADUserData{}
 	}
 }
 

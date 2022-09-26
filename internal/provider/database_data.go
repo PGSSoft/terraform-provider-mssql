@@ -23,7 +23,7 @@ type databaseData struct {
 
 func (p mssqlProvider) NewDatabaseDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return databaseData{}
+		return &databaseData{}
 	}
 }
 

@@ -24,7 +24,7 @@ type azureADServicePrincipalData struct {
 
 func (p mssqlProvider) NewAzureADServicePrincipalDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return azureADServicePrincipalData{}
+		return &azureADServicePrincipalData{}
 	}
 }
 

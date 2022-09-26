@@ -19,7 +19,7 @@ var (
 
 func (p mssqlProvider) NewSqlUserListDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return sqlUserList{}
+		return &sqlUserList{}
 	}
 }
 

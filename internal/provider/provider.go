@@ -15,7 +15,7 @@ import (
 
 // To ensure provider fully satisfies framework interfaces
 var (
-	_ provider.Provider = &mssqlProvider{}
+	_ provider.ProviderWithMetadata = &mssqlProvider{}
 )
 
 const (
@@ -30,6 +30,10 @@ type Resource struct {
 }
 
 func (r *Resource) Configure(_ context.Context, data any, diag *diag.Diagnostics) {
+	if data == nil {
+		return
+	}
+
 	db, ok := data.(sql.Connection)
 
 	if !ok {
@@ -123,6 +127,11 @@ type mssqlProvider struct {
 	Db      sql.Connection
 }
 
+func (p *mssqlProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "mssql"
+	resp.Version = p.Version
+}
+
 func (p *mssqlProvider) Configure(ctx context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
 	if p.Version != VersionTest {
 		var data providerData
@@ -147,7 +156,7 @@ func (p *mssqlProvider) Configure(ctx context.Context, request provider.Configur
 }
 
 func (p mssqlProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
+	ctors := []func() resource.Resource{
 		p.NewAzureADServicePrincipalResource(),
 		p.NewAzureADUserResource(),
 		p.NewDatabaseResource(),
@@ -156,10 +165,20 @@ func (p mssqlProvider) Resources(ctx context.Context) []func() resource.Resource
 		p.NewSqlLoginResource(),
 		p.NewSqlUserResource(),
 	}
+
+	for _, ctor := range ctors {
+		res := ctor()
+
+		if _, ok := res.(resource.ResourceWithConfigure); !ok {
+			panic(fmt.Sprintf("Resource %T does not implement ResourceWithConfigure", res))
+		}
+	}
+
+	return ctors
 }
 
 func (p mssqlProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
+	ctors := []func() datasource.DataSource{
 		p.NewAzureADServicePrincipalDataSource(),
 		p.NewAzureADUserDataSource(),
 		p.NewDatabaseDataSource(),
@@ -171,6 +190,16 @@ func (p mssqlProvider) DataSources(ctx context.Context) []func() datasource.Data
 		p.NewSqlUserDataSource(),
 		p.NewSqlUserListDataSource(),
 	}
+
+	for _, ctor := range ctors {
+		data := ctor()
+
+		if _, ok := data.(datasource.DataSourceWithConfigure); !ok {
+			panic(fmt.Sprintf("Data source %T does not implmenet DataSourceWithConfigure", data))
+		}
+	}
+
+	return ctors
 }
 
 func (p mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {

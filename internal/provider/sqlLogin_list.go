@@ -23,7 +23,7 @@ type sqlLoginList struct {
 
 func (p mssqlProvider) NewSqlLoginListDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return sqlLoginList{}
+		return &sqlLoginList{}
 	}
 }
 

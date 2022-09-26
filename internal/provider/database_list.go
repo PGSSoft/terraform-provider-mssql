@@ -28,7 +28,7 @@ type databaseList struct {
 
 func (p mssqlProvider) NewDatabaseListDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return databaseList{}
+		return &databaseList{}
 	}
 }
 

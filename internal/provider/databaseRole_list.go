@@ -29,7 +29,7 @@ type databaseRoleList struct {
 
 func (p mssqlProvider) NewDatabaseRoleListDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return databaseRoleList{}
+		return &databaseRoleList{}
 	}
 }
 

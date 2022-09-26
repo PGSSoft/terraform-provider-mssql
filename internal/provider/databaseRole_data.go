@@ -21,7 +21,7 @@ type databaseRoleData struct {
 
 func (p mssqlProvider) NewDatabaseRoleDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return databaseRoleData{}
+		return &databaseRoleData{}
 	}
 }
 

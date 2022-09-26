@@ -21,7 +21,7 @@ type sqlUserData struct {
 
 func (p mssqlProvider) NewSqlUserDataSource() func() datasource.DataSource {
 	return func() datasource.DataSource {
-		return sqlUserData{}
+		return &sqlUserData{}
 	}
 }
 
