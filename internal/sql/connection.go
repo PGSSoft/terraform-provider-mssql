@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"regexp"
 
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/denisenkom/go-mssqldb/azuread"
+	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb/azuread"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 

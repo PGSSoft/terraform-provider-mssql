@@ -2,15 +2,12 @@ module github.com/PGSSoft/terraform-provider-mssql
 
 go 1.18
 
-replace github.com/denisenkom/go-mssqldb v0.12.2 => ./deps/go-mssqldb
-
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.3
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v0.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql v1.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/denisenkom/go-mssqldb v0.12.2
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/glendc/go-external-ip v0.1.0
@@ -18,6 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework v0.13.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.23.0
+	github.com/microsoft/go-mssqldb v0.17.0
 	github.com/microsoft/kiota-authentication-azure-go v0.3.1
 	github.com/microsoftgraph/msgraph-sdk-go v0.30.0
 	github.com/stretchr/testify v1.8.0
