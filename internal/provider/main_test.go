@@ -18,7 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/denisenkom/go-mssqldb/azuread"
+	"github.com/microsoft/go-mssqldb/azuread"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
