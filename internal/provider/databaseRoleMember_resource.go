@@ -3,28 +3,45 @@ package provider
 import (
 	"context"
 	"errors"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = DatabaseRoleMemberResourceType{}
-	_ tfsdk.Resource                = databaseRoleMemberResource{}
-	_ tfsdk.ResourceWithImportState = databaseRoleMemberResource{}
+	_ resource.ResourceWithConfigure   = &databaseRoleMemberResource{}
+	_ resource.ResourceWithImportState = databaseRoleMemberResource{}
 )
 
-type DatabaseRoleMemberResourceType struct{}
+type databaseRoleMemberResource struct {
+	Resource
+}
 
-func (d DatabaseRoleMemberResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewDatabaseRoleMemberResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &databaseRoleMemberResource{}
+	}
+}
+
+func (s databaseRoleMemberResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_database_role_member"
+}
+
+func (r *databaseRoleMemberResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (d databaseRoleMemberResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	annotatePrincipalId := func(attrName string) tfsdk.Attribute {
 		attr := databaseRoleMemberAttributes[attrName]
 		attr.Required = true
-		attr.PlanModifiers = tfsdk.AttributePlanModifiers{tfsdk.RequiresReplace()}
+		attr.PlanModifiers = tfsdk.AttributePlanModifiers{resource.RequiresReplace()}
 		return attr
 	}
 
@@ -38,17 +55,7 @@ func (d DatabaseRoleMemberResourceType) GetSchema(context.Context) (tfsdk.Schema
 	}, nil
 }
 
-func (d DatabaseRoleMemberResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) databaseRoleMemberResource {
-		return databaseRoleMemberResource{Resource: base}
-	})
-}
-
-type databaseRoleMemberResource struct {
-	Resource
-}
-
-func (d databaseRoleMemberResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (d databaseRoleMemberResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	var (
 		data     databaseRoleMemberResourceData
 		roleId   dbObjectId[sql.DatabaseRoleId]
@@ -78,7 +85,7 @@ func (d databaseRoleMemberResource) Create(ctx context.Context, request tfsdk.Cr
 		})
 }
 
-func (d databaseRoleMemberResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (d databaseRoleMemberResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	var (
 		data databaseRoleMemberResourceData
 		id   dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]
@@ -105,11 +112,11 @@ func (d databaseRoleMemberResource) Read(ctx context.Context, request tfsdk.Read
 		})
 }
 
-func (d databaseRoleMemberResource) Update(context.Context, tfsdk.UpdateResourceRequest, *tfsdk.UpdateResourceResponse) {
+func (d databaseRoleMemberResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
 	panic("Resource does not support updates. All changes should trigger recreate.")
 }
 
-func (d databaseRoleMemberResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (d databaseRoleMemberResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	var (
 		data databaseRoleMemberResourceData
 		id   dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]
@@ -129,6 +136,6 @@ func (d databaseRoleMemberResource) Delete(ctx context.Context, request tfsdk.De
 		Then(func() { response.State.RemoveResource(ctx) })
 }
 
-func (d databaseRoleMemberResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (d databaseRoleMemberResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }

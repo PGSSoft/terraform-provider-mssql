@@ -279,7 +279,7 @@ func newProviderFactories() map[string]func() (tfprotov6.ProviderServer, error) 
 				}
 			}
 
-			prov := provider{
+			prov := mssqlProvider{
 				Version: VersionTest,
 				Db:      connection,
 			}

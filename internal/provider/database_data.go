@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -12,13 +14,28 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = DatabaseDataSourceType{}
-	_ tfsdk.DataSource     = databaseData{}
+	_ datasource.DataSourceWithConfigure = &databaseData{}
 )
 
-type DatabaseDataSourceType struct{}
+type databaseData struct {
+	Resource
+}
 
-func (d DatabaseDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewDatabaseDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return &databaseData{}
+	}
+}
+
+func (s *databaseData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s databaseData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_database"
+}
+
+func (d databaseData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	a := map[string]tfsdk.Attribute{}
 	for n, attribute := range databaseAttributes {
 		attribute.Required = n == "name"
@@ -32,17 +49,7 @@ func (d DatabaseDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.D
 	}, nil
 }
 
-func (d DatabaseDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) databaseData {
-		return databaseData{Resource: base}
-	})
-}
-
-type databaseData struct {
-	Resource
-}
-
-func (d databaseData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (d databaseData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data, _ := getDB(ctx, request.Config)
 	if utils.HasError(ctx) {

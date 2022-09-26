@@ -3,23 +3,40 @@ package provider
 import (
 	"context"
 	"errors"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = DatabaseRoleResourceType{}
-	_ tfsdk.Resource                = databaseRoleResource{}
-	_ tfsdk.ResourceWithImportState = databaseRoleResource{}
+	_ resource.ResourceWithConfigure   = &databaseRoleResource{}
+	_ resource.ResourceWithImportState = databaseRoleResource{}
 )
 
-type DatabaseRoleResourceType struct{}
+type databaseRoleResource struct {
+	Resource
+}
 
-func (d DatabaseRoleResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewDatabaseRoleResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &databaseRoleResource{}
+	}
+}
+
+func (s databaseRoleResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_database_role"
+}
+
+func (r *databaseRoleResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (d databaseRoleResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Description: "Manages database-level role.",
 		Attributes: map[string]tfsdk.Attribute{
@@ -37,17 +54,7 @@ func (d DatabaseRoleResourceType) GetSchema(context.Context) (tfsdk.Schema, diag
 	}, nil
 }
 
-func (d DatabaseRoleResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) databaseRoleResource {
-		return databaseRoleResource{Resource: base}
-	})
-}
-
-type databaseRoleResource struct {
-	Resource
-}
-
-func (d databaseRoleResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (d databaseRoleResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	var (
 		data databaseRoleResourceData
 		db   sql.Database
@@ -81,7 +88,7 @@ func (d databaseRoleResource) Create(ctx context.Context, request tfsdk.CreateRe
 		Then(func() { utils.SetData(ctx, &response.State, data) })
 }
 
-func (d databaseRoleResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (d databaseRoleResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	var (
 		data   databaseRoleResourceData
 		db     sql.Database
@@ -99,7 +106,7 @@ func (d databaseRoleResource) Read(ctx context.Context, request tfsdk.ReadResour
 		Then(func() { utils.SetData(ctx, &response.State, data) })
 }
 
-func (d databaseRoleResource) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
+func (d databaseRoleResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
 	var (
 		data   databaseRoleResourceData
 		dbId   sql.DatabaseId
@@ -142,7 +149,7 @@ func (d databaseRoleResource) Update(ctx context.Context, request tfsdk.UpdateRe
 		Then(func() { utils.SetData(ctx, &response.State, data) })
 }
 
-func (d databaseRoleResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (d databaseRoleResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	var (
 		data   databaseRoleResourceData
 		db     sql.Database
@@ -160,6 +167,6 @@ func (d databaseRoleResource) Delete(ctx context.Context, request tfsdk.DeleteRe
 		Then(func() { response.State.RemoveResource(ctx) })
 }
 
-func (d databaseRoleResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (d databaseRoleResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }

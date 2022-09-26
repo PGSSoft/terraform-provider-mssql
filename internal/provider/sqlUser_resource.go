@@ -2,25 +2,42 @@ package provider
 
 import (
 	"context"
+	"strconv"
+	"strings"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"strconv"
-	"strings"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = SqlUserResourceType{}
-	_ tfsdk.Resource                = sqlUserResource{}
-	_ tfsdk.ResourceWithImportState = sqlUserResource{}
+	_ resource.ResourceWithConfigure   = &sqlUserResource{}
+	_ resource.ResourceWithImportState = sqlUserResource{}
 )
 
-type SqlUserResourceType struct{}
+type sqlUserResource struct {
+	sqlUserResourceBase
+}
 
-func (rt SqlUserResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewSqlUserResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &sqlUserResource{}
+	}
+}
+
+func (s sqlUserResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_sql_user"
+}
+
+func (r *sqlUserResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (rt sqlUserResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Description: "Manages database-level user, based on SQL login.",
 		Attributes: map[string]tfsdk.Attribute{
@@ -32,17 +49,7 @@ func (rt SqlUserResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	}, nil
 }
 
-func (rt SqlUserResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) sqlUserResource {
-		return sqlUserResource{sqlUserResourceBase: sqlUserResourceBase{Resource: base}}
-	})
-}
-
-type sqlUserResource struct {
-	sqlUserResourceBase
-}
-
-func (r sqlUserResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (r sqlUserResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlUserResourceData](ctx, request.Plan)
 	if utils.HasError(ctx) {
@@ -67,7 +74,7 @@ func (r sqlUserResource) Create(ctx context.Context, request tfsdk.CreateResourc
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (r sqlUserResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (r sqlUserResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlUserResourceData](ctx, request.State)
 	if utils.HasError(ctx) {
@@ -87,7 +94,7 @@ func (r sqlUserResource) Read(ctx context.Context, request tfsdk.ReadResourceReq
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (r sqlUserResource) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
+func (r sqlUserResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlUserResourceData](ctx, request.Plan)
 	if utils.HasError(ctx) {
@@ -104,7 +111,7 @@ func (r sqlUserResource) Update(ctx context.Context, request tfsdk.UpdateResourc
 	utils.SetData(ctx, &response.State, data.withSettings(user.GetSettings(ctx)))
 }
 
-func (r sqlUserResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (r sqlUserResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlUserResourceData](ctx, request.State)
 	if utils.HasError(ctx) {
@@ -123,8 +130,8 @@ func (r sqlUserResource) Delete(ctx context.Context, request tfsdk.DeleteResourc
 	response.State.RemoveResource(ctx)
 }
 
-func (r sqlUserResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (r sqlUserResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }
 
 func (r sqlUserResource) getUser(ctx context.Context, data sqlUserResourceData) sql.User {

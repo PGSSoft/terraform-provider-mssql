@@ -6,6 +6,7 @@ import (
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -13,13 +14,34 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = SqlUserListDataSourceType{}
-	_ tfsdk.DataSource     = sqlUserList{}
+	_ datasource.DataSourceWithConfigure = &sqlUserList{}
 )
 
-type SqlUserListDataSourceType struct{}
+func (p mssqlProvider) NewSqlUserListDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return &sqlUserList{}
+	}
+}
 
-func (s SqlUserListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (s *sqlUserList) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s sqlUserList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_sql_users"
+}
+
+type sqlUserListData struct {
+	Id         types.String          `tfsdk:"id"`
+	DatabaseId types.String          `tfsdk:"database_id"`
+	Users      []sqlUserResourceData `tfsdk:"users"`
+}
+
+type sqlUserList struct {
+	sqlUserResourceBase
+}
+
+func (s sqlUserList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attr := range sqlUserAttributes {
 		attr.Computed = true
@@ -49,23 +71,7 @@ func (s SqlUserListDataSourceType) GetSchema(context.Context) (tfsdk.Schema, dia
 	}, nil
 }
 
-func (s SqlUserListDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) sqlUserList {
-		return sqlUserList{sqlUserResourceBase: sqlUserResourceBase{Resource: base}}
-	})
-}
-
-type sqlUserListData struct {
-	Id         types.String          `tfsdk:"id"`
-	DatabaseId types.String          `tfsdk:"database_id"`
-	Users      []sqlUserResourceData `tfsdk:"users"`
-}
-
-type sqlUserList struct {
-	sqlUserResourceBase
-}
-
-func (s sqlUserList) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (s sqlUserList) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	data := utils.GetData[sqlUserListData](ctx, request.Config)

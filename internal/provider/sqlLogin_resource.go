@@ -3,20 +3,21 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"strconv"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.ResourceType            = SqlLoginResourceType{}
-	_ tfsdk.Resource                = SqlLoginResource{}
-	_ tfsdk.ResourceWithImportState = SqlLoginResource{}
+	_ resource.ResourceWithConfigure   = &sqlLoginResource{}
+	_ resource.ResourceWithImportState = sqlLoginResource{}
 )
 
 type sqlLoginResourceData struct {
@@ -82,9 +83,25 @@ func (d sqlLoginResourceData) withSettings(settings sql.SqlLoginSettings, isAzur
 	return d
 }
 
-type SqlLoginResourceType struct{}
+type sqlLoginResource struct {
+	Resource
+}
 
-func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewSqlLoginResource() func() resource.Resource {
+	return func() resource.Resource {
+		return &sqlLoginResource{}
+	}
+}
+
+func (s sqlLoginResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "mssql_sql_login"
+}
+
+func (r *sqlLoginResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (l sqlLoginResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	const azureSQLNote = "\n\n-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
 	return tfsdk.Schema{
 		Description: "Manages single login.",
@@ -136,17 +153,7 @@ func (l SqlLoginResourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Dia
 	}, nil
 }
 
-func (l SqlLoginResourceType) NewResource(ctx context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) SqlLoginResource {
-		return SqlLoginResource{Resource: base}
-	})
-}
-
-type SqlLoginResource struct {
-	Resource
-}
-
-func (l SqlLoginResource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (l sqlLoginResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlLoginResourceData](ctx, request.Plan)
 	if utils.HasError(ctx) {
@@ -167,7 +174,7 @@ func (l SqlLoginResource) Create(ctx context.Context, request tfsdk.CreateResour
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (l SqlLoginResource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (l sqlLoginResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlLoginResourceData](ctx, request.State)
 	if utils.HasError(ctx) {
@@ -197,7 +204,7 @@ func (l SqlLoginResource) Read(ctx context.Context, request tfsdk.ReadResourceRe
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (l SqlLoginResource) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
+func (l sqlLoginResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlLoginResourceData](ctx, request.Plan)
 	if utils.HasError(ctx) {
@@ -220,7 +227,7 @@ func (l SqlLoginResource) Update(ctx context.Context, request tfsdk.UpdateResour
 	utils.SetData(ctx, &response.State, data)
 }
 
-func (l SqlLoginResource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+func (l sqlLoginResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlLoginResourceData](ctx, request.State)
 	if utils.HasError(ctx) {
@@ -239,6 +246,6 @@ func (l SqlLoginResource) Delete(ctx context.Context, request tfsdk.DeleteResour
 	response.State.RemoveResource(ctx)
 }
 
-func (l SqlLoginResource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), request, response)
+func (l sqlLoginResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }

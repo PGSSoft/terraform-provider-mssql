@@ -2,21 +2,38 @@ package provider
 
 import (
 	"context"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = DatabaseRoleDataSourceType{}
-	_ tfsdk.DataSource     = databaseRoleData{}
+	_ datasource.DataSourceWithConfigure = &databaseRoleData{}
 )
 
-type DatabaseRoleDataSourceType struct{}
+type databaseRoleData struct {
+	Resource
+}
 
-func (d DatabaseRoleDataSourceType) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewDatabaseRoleDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return &databaseRoleData{}
+	}
+}
+
+func (s *databaseRoleData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s databaseRoleData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_database_role"
+}
+
+func (d databaseRoleData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{
 		"members": {
 			Description: "Set of role members",
@@ -43,17 +60,7 @@ func (d DatabaseRoleDataSourceType) GetSchema(context.Context) (tfsdk.Schema, di
 	}, nil
 }
 
-func (d DatabaseRoleDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) databaseRoleData {
-		return databaseRoleData{Resource: base}
-	})
-}
-
-type databaseRoleData struct {
-	Resource
-}
-
-func (d databaseRoleData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (d databaseRoleData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
 	var (
 		data databaseRoleDataResourceData
 		db   sql.Database

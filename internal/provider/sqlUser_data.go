@@ -2,21 +2,38 @@ package provider
 
 import (
 	"context"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = SqlUserDataSourceType{}
-	_ tfsdk.DataSource     = sqlUserData{}
+	_ datasource.DataSourceWithConfigure = &sqlUserData{}
 )
 
-type SqlUserDataSourceType struct{}
+type sqlUserData struct {
+	sqlUserResourceBase
+}
 
-func (s SqlUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewSqlUserDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return &sqlUserData{}
+	}
+}
+
+func (s *sqlUserData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s sqlUserData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_sql_user"
+}
+
+func (s sqlUserData) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	a := map[string]tfsdk.Attribute{}
 	for n, attribute := range sqlUserAttributes {
 		attribute.Required = n == "name"
@@ -31,17 +48,7 @@ func (s SqlUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, dia
 	}, nil
 }
 
-func (s SqlUserDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) sqlUserData {
-		return sqlUserData{sqlUserResourceBase: sqlUserResourceBase{Resource: base}}
-	})
-}
-
-type sqlUserData struct {
-	sqlUserResourceBase
-}
-
-func (s sqlUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (s sqlUserData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 	data := utils.GetData[sqlUserResourceData](ctx, request.Config)
 	if utils.HasError(ctx) {

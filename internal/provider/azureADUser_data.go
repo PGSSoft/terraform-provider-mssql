@@ -7,6 +7,7 @@ import (
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -14,13 +15,28 @@ import (
 
 // To ensure resource types fully satisfy framework interfaces
 var (
-	_ tfsdk.DataSourceType = AzureADUserDataSourceType{}
-	_ tfsdk.DataSource     = azureADUserData{}
+	_ datasource.DataSourceWithConfigure = &azureADUserData{}
 )
 
-type AzureADUserDataSourceType struct{}
+type azureADUserData struct {
+	Resource
+}
 
-func (s AzureADUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p mssqlProvider) NewAzureADUserDataSource() func() datasource.DataSource {
+	return func() datasource.DataSource {
+		return &azureADUserData{}
+	}
+}
+
+func (s *azureADUserData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+}
+
+func (s azureADUserData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "mssql_azuread_user"
+}
+
+func (s azureADUserData) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attr := range azureADUserAttributes {
 		attr.Required = n == "database_id"
@@ -35,17 +51,7 @@ func (s AzureADUserDataSourceType) GetSchema(ctx context.Context) (tfsdk.Schema,
 	}, nil
 }
 
-func (s AzureADUserDataSourceType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return newResource(ctx, p, func(base Resource) azureADUserData {
-		return azureADUserData{Resource: base}
-	})
-}
-
-type azureADUserData struct {
-	Resource
-}
-
-func (s azureADUserData) Read(ctx context.Context, request tfsdk.ReadDataSourceRequest, response *tfsdk.ReadDataSourceResponse) {
+func (s azureADUserData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
 	var (
 		data azureADUserResourceData
 		db   sql.Database
