@@ -111,8 +111,12 @@ DROP LOGIN [renamed_login];
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					return resourceId, nil
 				},
-				ImportStateVerify: true,
 				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					for _, state := range states {
+						if state.ID == resourceId {
+							assert.Equal(t, "renamed_user", state.Attributes["name"])
+						}
+					}
 					return nil
 				},
 			},
