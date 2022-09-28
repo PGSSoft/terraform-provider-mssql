@@ -18,7 +18,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/sql/armsql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/microsoft/go-mssqldb/azuread"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -29,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/microsoft/go-mssqldb/azuread"
 	a "github.com/microsoft/kiota-authentication-azure-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/stretchr/testify/require"
@@ -118,7 +118,7 @@ func createAzureSQL() {
 		auth := panicOnError(a.NewAzureIdentityAuthenticationProvider(token))
 		graphAdapter := panicOnError(msgraphsdk.NewGraphRequestAdapter(auth))
 		graphClient := msgraphsdk.NewGraphServiceClient(graphAdapter)
-		me := panicOnError(graphClient.Me().Get())
+		me := panicOnError(graphClient.Me().Get(ctx, nil))
 		clientId = *me.GetId()
 	}
 
