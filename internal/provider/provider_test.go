@@ -120,6 +120,7 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 	hostCases := map[string]struct {
 		pd   providerData
 		host string
+		env  map[string]string
 	}{
 		"With port": {
 			pd: providerData{
@@ -135,11 +136,53 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 			},
 			host: "test_hostname2",
 		},
+		"Env variable hostname": {
+			pd: providerData{
+				Hostname: types.String{Null: true},
+				Port:     types.Int64{Null: true},
+			},
+			env: map[string]string{
+				"MSSQL_HOSTNAME": "env_test_hostname",
+			},
+			host: "env_test_hostname",
+		},
+		"Env variable hostname and port": {
+			pd: providerData{
+				Hostname: types.String{Null: true},
+				Port:     types.Int64{Null: true},
+			},
+			env: map[string]string{
+				"MSSQL_HOSTNAME": "env_test_hostname2",
+				"MSSQL_PORT":     "321",
+			},
+			host: "env_test_hostname2:321",
+		},
+		"Env variables and attributes": {
+			pd: providerData{
+				Hostname: types.String{Value: "test_hostname"},
+				Port:     types.Int64{Value: 123},
+			},
+			env: map[string]string{
+				"MSSQL_HOSTNAME": "env_test_hostname2",
+				"MSSQL_PORT":     "321",
+			},
+			host: "test_hostname:123",
+		},
 	}
 
 	for name, tc := range hostCases {
 		name, tc := name, tc
 		t.Run(fmt.Sprintf("Host %s", name), func(t *testing.T) {
+			for n, v := range tc.env {
+				os.Setenv(n, v)
+			}
+
+			defer func() {
+				for n := range tc.env {
+					os.Unsetenv(n)
+				}
+			}()
+
 			cd, _ := tc.pd.asConnectionDetails(ctx)
 			assert.Equal(t, tc.host, cd.Host)
 		})
