@@ -69,7 +69,17 @@ resource "mssql_azuread_user" %[1]q {
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
 					return userResourceId, nil
 				},
-				ImportStateVerify: true,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					for _, state := range states {
+						if state.ID == userResourceId {
+							assert.Equal(t, "test_aad_user", state.Attributes["name"])
+							assert.Equal(t, fmt.Sprint(defaultDbId), state.Attributes["database_id"])
+							assert.Equal(t, strings.ToUpper(azureAdTestGroupId), strings.ToUpper(state.Attributes["user_object_id"]))
+						}
+					}
+
+					return nil
+				},
 			},
 		},
 	})

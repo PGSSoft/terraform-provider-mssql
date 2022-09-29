@@ -100,7 +100,14 @@ resource "mssql_database_role" %[1]q {
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					return roleResourceId, nil
 				},
-				ImportStateVerify: true,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					for _, state := range states {
+						if state.ID == roleResourceId {
+							assert.Equal(t, "renamed", state.Attributes["name"])
+						}
+					}
+					return nil
+				},
 			},
 		},
 	})

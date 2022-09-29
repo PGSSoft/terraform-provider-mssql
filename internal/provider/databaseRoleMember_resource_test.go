@@ -3,15 +3,17 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/assert"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestDatabaseRoleMemberResource(t *testing.T) {
 	var resourceId string
+	var roleId, memberId int
 
 	newResource := func(resourceName string, roleName string, memberName string) string {
 		return fmt.Sprintf(`
@@ -39,8 +41,6 @@ resource "mssql_database_role_member" %[1]q {
 	checkMembership := func(roleName string, memberName string) resource.TestCheckFunc {
 		return resource.ComposeTestCheckFunc(
 			sqlCheck(defaultDbName, func(db *sql.DB) error {
-				var roleId, memberId int
-
 				err := db.QueryRow("SELECT DATABASE_PRINCIPAL_ID(@p1), DATABASE_PRINCIPAL_ID(@p2)", roleName, memberName).
 					Scan(&roleId, &memberId)
 				if err != nil {
@@ -72,7 +72,16 @@ resource "mssql_database_role_member" %[1]q {
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					return resourceId, nil
 				},
-				ImportStateVerify: true,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					for _, state := range states {
+						if state.ID == resourceId {
+							assert.Equal(t, fmt.Sprintf("%d/%d", defaultDbId, memberId), state.Attributes["member_id"])
+							assert.Equal(t, fmt.Sprintf("%d/%d", defaultDbId, roleId), state.Attributes["role_id"])
+						}
+					}
+
+					return nil
+				},
 			},
 			{
 				Config: fmt.Sprintf(`
