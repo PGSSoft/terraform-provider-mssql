@@ -27,6 +27,7 @@ provider "mssql" {
 ### Azure AD
 In case of Azure SQL connections, Azure Active Directory auth tokens can be used to authenticate.
 
+<br/>
 #### Service Principal
 Provide client ID (a.k.a. application ID), secret and tenant ID, using `azure_auth` field:
 ```terraform
@@ -42,10 +43,19 @@ provider "mssql" {
 }
 ```
 
+<br/>
 #### Default chained credentials
 When `azure_auth` value is set to empty object (`{}`), the provider uses chained credentials built from `EnvironmentCredential` -> `ManagedIdentityCredential` -> `AzureCLICredential`.
 See [DefaultAzureCredential docs](https://github.com/Azure/azure-sdk-for-go/wiki/Set-up-Your-Environment-for-Authentication#configure-defaultazurecredential) for details.
 
+<br/>
+#### Environment variables
+When `azure_auth` value is set to empty object (`{}`) and following environment variables are set, the env variable values will be used for authentication, taking precedence over `DefaultAzureCredential`.
+- `ARM_CLIENT_ID`
+- `ARM_CLIENT_SECRET`
+- `ARM_TENANT_ID`
+
+<br/>
 Example:
 ```terraform
 provider "mssql" {

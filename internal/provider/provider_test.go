@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
@@ -183,6 +184,53 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 				},
 			},
 		}
+
+		cd, _ := pd.asConnectionDetails(ctx)
+
+		azureAuth, ok := cd.Auth.(sql.ConnectionAuthAzure)
+		require.True(t, ok, "Connection auth not set to Azure")
+		assert.Equal(t, "test_client_id", azureAuth.ClientId, "client_id")
+		assert.Equal(t, "test_client_secret", azureAuth.ClientSecret, "client_secret")
+		assert.Equal(t, "test_tenant_id", azureAuth.TenantId, "tenant_id")
+	})
+
+	t.Run("Azure auth env variables", func(t *testing.T) {
+		pd := providerData{
+			SqlAuth:   types.Object{},
+			AzureAuth: types.Object{},
+		}
+		os.Setenv("ARM_CLIENT_ID", "env_test_client_id")
+		os.Setenv("ARM_CLIENT_SECRET", "env_test_client_secret")
+		os.Setenv("ARM_TENANT_ID", "env_test_tenant_id")
+
+		cd, _ := pd.asConnectionDetails(ctx)
+
+		azureAuth, ok := cd.Auth.(sql.ConnectionAuthAzure)
+		require.True(t, ok, "Connection auth not set to Azure")
+		assert.Equal(t, "env_test_client_id", azureAuth.ClientId, "client_id")
+		assert.Equal(t, "env_test_client_secret", azureAuth.ClientSecret, "client_secret")
+		assert.Equal(t, "env_test_tenant_id", azureAuth.TenantId, "tenant_id")
+	})
+
+	t.Run("Azure auth and env variables", func(t *testing.T) {
+		pd := providerData{
+			SqlAuth: types.Object{},
+			AzureAuth: types.Object{
+				AttrTypes: map[string]attr.Type{
+					"client_id":     types.StringType,
+					"client_secret": types.StringType,
+					"tenant_id":     types.StringType,
+				},
+				Attrs: map[string]attr.Value{
+					"client_id":     types.String{Value: "test_client_id"},
+					"client_secret": types.String{Value: "test_client_secret"},
+					"tenant_id":     types.String{Value: "test_tenant_id"},
+				},
+			},
+		}
+		os.Setenv("ARM_CLIENT_ID", "env_test_client_id")
+		os.Setenv("ARM_CLIENT_SECRET", "env_test_client_secret")
+		os.Setenv("ARM_TENANT_ID", "env_test_tenant_id")
 
 		cd, _ := pd.asConnectionDetails(ctx)
 

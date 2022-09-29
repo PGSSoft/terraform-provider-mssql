@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -112,11 +113,25 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 			addComputedError("Azure AD Service Principal tenant_id cannot be a computed value")
 		}
 
-		connDetails.Auth = sql.ConnectionAuthAzure{
+		connAuth := sql.ConnectionAuthAzure{
 			ClientId:     auth.ClientId.Value,
 			ClientSecret: auth.ClientSecret.Value,
 			TenantId:     auth.TenantId.Value,
 		}
+
+		if connAuth.ClientId == "" {
+			connAuth.ClientId = os.Getenv("ARM_CLIENT_ID")
+		}
+
+		if connAuth.ClientSecret == "" {
+			connAuth.ClientSecret = os.Getenv("ARM_CLIENT_SECRET")
+		}
+
+		if connAuth.TenantId == "" {
+			connAuth.TenantId = os.Getenv("ARM_TENANT_ID")
+		}
+
+		connDetails.Auth = connAuth
 	}
 
 	return connDetails, diags
