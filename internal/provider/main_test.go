@@ -49,6 +49,7 @@ var azureAdTestGroupName = os.Getenv("TF_AZURE_AD_TEST_GROUP_NAME")
 var imgTag = os.Getenv("TF_MSSQL_IMG_TAG")
 var isAzureTest = imgTag == "azure-sql"
 var azureServerName, azureMSIName, azureMSIObjectID, azureMSIClientID string
+var isAcceptanceTest = os.Getenv("TF_ACC") == "1"
 
 const defaultDbName = "acc-test-db"
 
@@ -81,7 +82,7 @@ func (r *testRunner) Run() int {
 		imgTag = "2019-latest"
 	}
 
-	if os.Getenv("TF_ACC") == "1" {
+	if isAcceptanceTest {
 		if isAzureTest {
 			createAzureSQL()
 			defer destroyAzureSQL()
@@ -89,9 +90,9 @@ func (r *testRunner) Run() int {
 			startMSSQL(imgTag)
 			defer stopMSSQL()
 		}
-	}
 
-	defaultDbId = panicOnError(createDBCore(defaultDbName))
+		defaultDbId = panicOnError(createDBCore(defaultDbName))
+	}
 
 	return r.m.Run()
 }
@@ -314,6 +315,10 @@ func openDBConnection(dbName string) *sql2.DB {
 }
 
 func withDBConnection(dbName string, f func(conn *sql2.DB)) {
+	if !isAcceptanceTest {
+		return
+	}
+
 	conn := openDBConnection(dbName)
 	defer conn.Close()
 	f(conn)

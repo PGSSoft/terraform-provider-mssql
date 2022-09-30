@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -73,12 +74,18 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 		addComputedError("Hostname cannot be a computed value")
 	}
 
-	connDetails := sql.ConnectionDetails{}
+	connDetails := sql.ConnectionDetails{
+		Host: os.Getenv("MSSQL_HOSTNAME"),
+	}
 
-	if pd.Port.Null {
+	if !pd.Hostname.Null {
 		connDetails.Host = pd.Hostname.Value
-	} else {
-		connDetails.Host = fmt.Sprintf("%s:%d", pd.Hostname.Value, pd.Port.Value)
+	}
+
+	if !pd.Port.Null {
+		connDetails.Host = fmt.Sprintf("%s:%d", connDetails.Host, pd.Port.Value)
+	} else if envPort := os.Getenv("MSSQL_PORT"); envPort != "" {
+		connDetails.Host = fmt.Sprintf("%s:%s", connDetails.Host, envPort)
 	}
 
 	if !pd.SqlAuth.Null {
@@ -112,11 +119,25 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 			addComputedError("Azure AD Service Principal tenant_id cannot be a computed value")
 		}
 
-		connDetails.Auth = sql.ConnectionAuthAzure{
+		connAuth := sql.ConnectionAuthAzure{
 			ClientId:     auth.ClientId.Value,
 			ClientSecret: auth.ClientSecret.Value,
 			TenantId:     auth.TenantId.Value,
 		}
+
+		if connAuth.ClientId == "" {
+			connAuth.ClientId = os.Getenv("ARM_CLIENT_ID")
+		}
+
+		if connAuth.ClientSecret == "" {
+			connAuth.ClientSecret = os.Getenv("ARM_CLIENT_SECRET")
+		}
+
+		if connAuth.TenantId == "" {
+			connAuth.TenantId = os.Getenv("ARM_TENANT_ID")
+		}
+
+		connDetails.Auth = connAuth
 	}
 
 	return connDetails, diags
@@ -210,12 +231,12 @@ func (p mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostic
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"hostname": {
-				Description: "FQDN or IP address of the SQL endpoint.",
+				Description: "FQDN or IP address of the SQL endpoint. Can be also set using `MSSQL_HOSTNAME` environment variable.",
 				Type:        types.StringType,
-				Required:    true,
+				Optional:    true,
 			},
 			"port": {
-				MarkdownDescription: "TCP port of SQL endpoint. Defaults to `1433`.",
+				MarkdownDescription: "TCP port of SQL endpoint. Defaults to `1433`. Can be also set using `MSSQL_PORT` environment variable.",
 				Type:                types.Int64Type,
 				Optional:            true,
 			},
