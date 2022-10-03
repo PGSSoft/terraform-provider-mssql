@@ -86,7 +86,7 @@ jobs:
         env:
           TF_ACC: "1"
           TF_MSSQL_IMG_TAG: ${{ matrix.mssql }}
-          TF_AZURE_SUBSCRIPTION_ID: fbf513eb-321c-40b8-8dbb-bb939ea1fe5a
+          TF_AZURE_SUBSCRIPTION_ID: ed349b81-e2df-40e0-ade4-9fc864f5a743
           TF_AZURE_RESOURCE_GROUP: terraform-mssql-tests
           AZURE_CLIENT_ID: 139df37c-3e72-4283-80c1-7be62f3d8e64
           AZURE_TENANT_ID: 7029fc72-c85c-4ecd-86f6-1ab9852b576f

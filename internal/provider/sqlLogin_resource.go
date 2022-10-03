@@ -3,21 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/resource"
 	"strconv"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-)
-
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ resource.ResourceWithConfigure   = &sqlLoginResource{}
-	_ resource.ResourceWithImportState = sqlLoginResource{}
 )
 
 type sqlLoginResourceData struct {
@@ -84,24 +77,20 @@ func (d sqlLoginResourceData) withSettings(settings sql.SqlLoginSettings, isAzur
 }
 
 type sqlLoginResource struct {
-	Resource
+	BaseResource
 }
 
-func (p mssqlProvider) NewSqlLoginResource() func() resource.Resource {
-	return func() resource.Resource {
-		return &sqlLoginResource{}
+func (p mssqlProvider) NewSqlLoginResource() func() sdkresource.Resource {
+	return func() sdkresource.Resource {
+		return resource.WrapResource[sqlLoginResourceData](&sqlLoginResource{})
 	}
 }
 
-func (s sqlLoginResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "mssql_sql_login"
+func (r *sqlLoginResource) GetName() string {
+	return "sql_login"
 }
 
-func (r *sqlLoginResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (l sqlLoginResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *sqlLoginResource) GetSchema(context.Context) tfsdk.Schema {
 	const azureSQLNote = "\n\n-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
 	return tfsdk.Schema{
 		Description: "Manages single login.",
@@ -150,102 +139,49 @@ func (l sqlLoginResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				return attr
 			}(),
 		},
-	}, nil
+	}
 }
 
-func (l sqlLoginResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data := utils.GetData[sqlLoginResourceData](ctx, request.Plan)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *sqlLoginResource) Create(ctx context.Context, req resource.CreateRequest[sqlLoginResourceData], resp *resource.CreateResponse[sqlLoginResourceData]) {
+	var login sql.SqlLogin
 
-	login := sql.CreateSqlLogin(ctx, l.Db, data.toSettings(ctx))
-	if utils.HasError(ctx) {
-		return
-	}
-
-	data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx))
-	data.Id = types.String{Value: string(login.GetId(ctx))}
-	if utils.HasError(ctx) {
-		return
-	}
-
-	utils.SetData(ctx, &response.State, data)
+	req.
+		Then(func() { login = sql.CreateSqlLogin(ctx, r.conn, req.Plan.toSettings(ctx)) }).
+		Then(func() {
+			resp.State = req.Plan.withSettings(login.GetSettings(ctx), r.conn.IsAzure(ctx))
+			resp.State.Id = types.String{Value: string(login.GetId(ctx))}
+		})
 }
 
-func (l sqlLoginResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data := utils.GetData[sqlLoginResourceData](ctx, request.State)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *sqlLoginResource) Read(ctx context.Context, req resource.ReadRequest[sqlLoginResourceData], resp *resource.ReadResponse[sqlLoginResourceData]) {
+	var (
+		login  sql.SqlLogin
+		exists bool
+	)
 
-	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
-	if utils.HasError(ctx) {
-		return
-	}
-
-	loginExists := login.Exists(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	if !loginExists {
-		response.State.RemoveResource(ctx)
-		return
-	}
-
-	data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx))
-	if utils.HasError(ctx) {
-		return
-	}
-
-	utils.SetData(ctx, &response.State, data)
+	req.
+		Then(func() { login = sql.GetSqlLogin(ctx, r.conn, sql.LoginId(req.State.Id.Value)) }).
+		Then(func() { exists = login.Exists(ctx) }).
+		Then(func() {
+			if exists {
+				resp.SetState(req.State.withSettings(login.GetSettings(ctx), r.conn.IsAzure(ctx)))
+			}
+		})
 }
 
-func (l sqlLoginResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data := utils.GetData[sqlLoginResourceData](ctx, request.Plan)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *sqlLoginResource) Update(ctx context.Context, req resource.UpdateRequest[sqlLoginResourceData], resp *resource.UpdateResponse[sqlLoginResourceData]) {
+	var login sql.SqlLogin
 
-	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
-	if utils.HasError(ctx) {
-		return
-	}
-
-	if login.UpdateSettings(ctx, data.toSettings(ctx)); utils.HasError(ctx) {
-		return
-	}
-
-	if data = data.withSettings(login.GetSettings(ctx), l.Db.IsAzure(ctx)); utils.HasError(ctx) {
-		return
-	}
-
-	utils.SetData(ctx, &response.State, data)
+	req.
+		Then(func() { login = sql.GetSqlLogin(ctx, r.conn, sql.LoginId(req.Plan.Id.Value)) }).
+		Then(func() { login.UpdateSettings(ctx, req.Plan.toSettings(ctx)) }).
+		Then(func() { resp.State = req.Plan.withSettings(login.GetSettings(ctx), r.conn.IsAzure(ctx)) })
 }
 
-func (l sqlLoginResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data := utils.GetData[sqlLoginResourceData](ctx, request.State)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *sqlLoginResource) Delete(ctx context.Context, req resource.DeleteRequest[sqlLoginResourceData], _ *resource.DeleteResponse[sqlLoginResourceData]) {
+	var login sql.SqlLogin
 
-	login := sql.GetSqlLogin(ctx, l.Db, sql.LoginId(data.Id.Value))
-	if utils.HasError(ctx) {
-		return
-	}
-
-	if login.Drop(ctx); utils.HasError(ctx) {
-		return
-	}
-
-	response.State.RemoveResource(ctx)
-}
-
-func (l sqlLoginResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+	req.
+		Then(func() { login = sql.GetSqlLogin(ctx, r.conn, sql.LoginId(req.State.Id.Value)) }).
+		Then(func() { login.Drop(ctx) })
 }

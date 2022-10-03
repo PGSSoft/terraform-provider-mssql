@@ -3,42 +3,30 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/resource"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/planModifiers"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ resource.ResourceWithConfigure   = &azureADUserResource{}
-	_ resource.ResourceWithImportState = azureADUserResource{}
-)
-
 type azureADUserResource struct {
-	Resource
+	BaseResource
 }
 
-func (p mssqlProvider) NewAzureADUserResource() func() resource.Resource {
-	return func() resource.Resource {
-		return &azureADUserResource{}
+func (p mssqlProvider) NewAzureADUserResource() func() sdkresource.Resource {
+	return func() sdkresource.Resource {
+		return resource.WrapResource[azureADUserResourceData](&azureADUserResource{})
 	}
 }
 
-func (s azureADUserResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "mssql_azuread_user"
+func (r *azureADUserResource) GetName() string {
+	return "azuread_user"
 }
 
-func (r *azureADUserResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (r azureADUserResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *azureADUserResource) GetSchema(context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
 		MarkdownDescription: `
 Managed database-level user mapped to Azure AD identity (user or group).
@@ -54,78 +42,64 @@ Managed database-level user mapped to Azure AD identity (user or group).
 				attr.Required = true
 				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
 					planModifiers.IgnoreCase(),
-					resource.RequiresReplace(),
+					sdkresource.RequiresReplace(),
 				}
 
 				return attr
 			}(),
 		},
-	}, nil
+	}
 }
 
-func (r azureADUserResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
+func (r *azureADUserResource) Create(ctx context.Context, req resource.CreateRequest[azureADUserResourceData], resp *resource.CreateResponse[azureADUserResourceData]) {
 	var (
-		data azureADUserResourceData
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADUserResourceData](ctx, request.Plan) }).
-		Then(func() { db = getResourceDb(ctx, r.Db, data.DatabaseId.Value) }).
-		Then(func() { user = sql.CreateUser(ctx, db, data.toSettings()) }).
+	req.
+		Then(func() { db = getResourceDb(ctx, r.conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { user = sql.CreateUser(ctx, db, req.Plan.toSettings()) }).
 		Then(func() {
-			data.Id = types.String{Value: dbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
+			req.Plan.Id = types.String{Value: dbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
 		}).
-		Then(func() { utils.SetData(ctx, &response.State, data) })
+		Then(func() { resp.State = req.Plan })
 }
 
-func (r azureADUserResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
+func (r *azureADUserResource) Read(ctx context.Context, req resource.ReadRequest[azureADUserResourceData], resp *resource.ReadResponse[azureADUserResourceData]) {
 	var (
-		data azureADUserResourceData
 		id   dbObjectId[sql.UserId]
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADUserResourceData](ctx, request.State) }).
-		Then(func() { id = parseDbObjectId[sql.UserId](ctx, data.Id.Value) }).
-		Then(func() { db = sql.GetDatabase(ctx, r.Db, id.DbId) }).
+	req.
+		Then(func() { id = parseDbObjectId[sql.UserId](ctx, req.State.Id.Value) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, id.DbId) }).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
 		Then(func() {
-			data = data.withSettings(ctx, user.GetSettings(ctx))
-			data.DatabaseId = types.String{Value: fmt.Sprint(id.DbId)}
-		}).
-		Then(func() { utils.SetData(ctx, &response.State, data) })
+			state := req.State.withSettings(ctx, user.GetSettings(ctx))
+			state.DatabaseId = types.String{Value: fmt.Sprint(id.DbId)}
+			resp.SetState(state)
+		})
 }
 
-func (r azureADUserResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+func (r *azureADUserResource) Update(context.Context, resource.UpdateRequest[azureADUserResourceData], *resource.UpdateResponse[azureADUserResourceData]) {
 	panic("not supported")
 }
 
-func (r azureADUserResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
+func (r *azureADUserResource) Delete(ctx context.Context, req resource.DeleteRequest[azureADUserResourceData], resp *resource.DeleteResponse[azureADUserResourceData]) {
 	var (
-		data azureADUserResourceData
 		id   dbObjectId[sql.UserId]
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADUserResourceData](ctx, request.State) }).
+	req.
 		Then(func() {
-			db = getResourceDb(ctx, r.Db, data.DatabaseId.Value)
-			id = parseDbObjectId[sql.UserId](ctx, data.Id.Value)
+			db = getResourceDb(ctx, r.conn, req.State.DatabaseId.Value)
+			id = parseDbObjectId[sql.UserId](ctx, req.State.Id.Value)
 		}).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
-		Then(func() { user.Drop(ctx) }).
-		Then(func() { response.State.RemoveResource(ctx) })
-}
-
-func (r azureADUserResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+		Then(func() { user.Drop(ctx) })
 }

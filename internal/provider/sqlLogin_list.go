@@ -3,39 +3,34 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/datasource"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ datasource.DataSourceWithConfigure = &sqlLoginList{}
-)
-
-type sqlLoginList struct {
-	Resource
+type sqlLoginListData struct {
+	Id     types.String             `tfsdk:"id"`
+	Logins []sqlLoginDataSourceData `tfsdk:"logins"`
 }
 
-func (p mssqlProvider) NewSqlLoginListDataSource() func() datasource.DataSource {
-	return func() datasource.DataSource {
-		return &sqlLoginList{}
+type sqlLoginList struct {
+	BaseDataSource
+}
+
+func (p mssqlProvider) NewSqlLoginListDataSource() func() sdkdatasource.DataSource {
+	return func() sdkdatasource.DataSource {
+		return datasource.WrapDataSource[sqlLoginListData](&sqlLoginList{})
 	}
 }
 
-func (s *sqlLoginList) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+func (l *sqlLoginList) GetName() string {
+	return "sql_logins"
 }
 
-func (s sqlLoginList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "mssql_sql_logins"
-}
-
-func (l sqlLoginList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (l *sqlLoginList) GetSchema(context.Context) tfsdk.Schema {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attribute := range sqlLoginAttributes {
 		attribute.Computed = true
@@ -56,34 +51,25 @@ func (l sqlLoginList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics
 				Computed:    true,
 			},
 		},
-	}, nil
+	}
 }
 
-func (l sqlLoginList) Read(ctx context.Context, _ datasource.ReadRequest, response *datasource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+func (l *sqlLoginList) Read(ctx context.Context, req datasource.ReadRequest[sqlLoginListData], resp *datasource.ReadResponse[sqlLoginListData]) {
+	var logins map[sql.LoginId]sql.SqlLogin
 
-	logins := sql.GetSqlLogins(ctx, l.Db)
-	if utils.HasError(ctx) {
-		return
-	}
+	req.
+		Then(func() { logins = sql.GetSqlLogins(ctx, l.conn) }).
+		Then(func() {
+			result := sqlLoginListData{
+				Id: types.String{Value: ""},
+			}
 
-	result := struct {
-		Id     types.String             `tfsdk:"id"`
-		Logins []sqlLoginDataSourceData `tfsdk:"logins"`
-	}{
-		Id: types.String{Value: ""},
-	}
+			for id, login := range logins {
+				s := login.GetSettings(ctx)
+				r := sqlLoginDataSourceData{Id: types.String{Value: fmt.Sprint(id)}}
+				result.Logins = append(result.Logins, r.withSettings(s))
+			}
 
-	for id, login := range logins {
-		s := login.GetSettings(ctx)
-
-		if utils.HasError(ctx) {
-			return
-		}
-
-		r := sqlLoginDataSourceData{Id: types.String{Value: fmt.Sprint(id)}}
-		result.Logins = append(result.Logins, r.withSettings(s))
-	}
-
-	utils.SetData(ctx, &response.State, result)
+			resp.SetState(result)
+		})
 }

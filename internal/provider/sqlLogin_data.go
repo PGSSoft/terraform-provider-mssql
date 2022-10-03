@@ -3,39 +3,30 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/datasource"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ datasource.DataSourceWithConfigure = &sqlLoginData{}
-)
-
 type sqlLoginData struct {
-	Resource
+	BaseDataSource
 }
 
-func (p mssqlProvider) NewSqlLoginDataSource() func() datasource.DataSource {
-	return func() datasource.DataSource {
-		return &sqlLoginData{}
+func (p mssqlProvider) NewSqlLoginDataSource() func() sdkdatasource.DataSource {
+	return func() sdkdatasource.DataSource {
+		return datasource.WrapDataSource[sqlLoginDataSourceData](&sqlLoginData{})
 	}
 }
 
-func (s *sqlLoginData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+func (d *sqlLoginData) GetName() string {
+	return "sql_login"
 }
 
-func (s sqlLoginData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "mssql_sql_login"
-}
-
-func (d sqlLoginData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (d *sqlLoginData) GetSchema(context.Context) tfsdk.Schema {
 	a := map[string]tfsdk.Attribute{}
 	for n, attribute := range sqlLoginAttributes {
 		attribute.Required = n == "name"
@@ -46,29 +37,24 @@ func (d sqlLoginData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics
 	return tfsdk.Schema{
 		Description: "Obtains information about single SQL login.",
 		Attributes:  a,
-	}, nil
+	}
 }
 
-func (d sqlLoginData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data := utils.GetData[sqlLoginDataSourceData](ctx, request.Config)
+func (d *sqlLoginData) Read(ctx context.Context, req datasource.ReadRequest[sqlLoginDataSourceData], resp *datasource.ReadResponse[sqlLoginDataSourceData]) {
+	var login sql.SqlLogin
 
-	login := sql.GetSqlLoginByName(ctx, d.Db, data.Name.Value)
+	req.
+		Then(func() {
+			login = sql.GetSqlLoginByName(ctx, d.conn, req.Config.Name.Value)
 
-	if login == nil || !login.Exists(ctx) {
-		response.State.RemoveResource(ctx)
-		utils.AddError(ctx, "Login does not exist", fmt.Errorf("could not find SQL Login '%s'", data.Name.Value))
-	}
+			if login == nil || !login.Exists(ctx) {
+				utils.AddError(ctx, "Login does not exist", fmt.Errorf("could not find SQL Login '%s'", req.Config.Name.Value))
+			}
+		}).
+		Then(func() {
+			state := req.Config.withSettings(login.GetSettings(ctx))
+			state.Id = types.String{Value: fmt.Sprint(login.GetId(ctx))}
 
-	if utils.HasError(ctx) {
-		return
-	}
-
-	if data = data.withSettings(login.GetSettings(ctx)); utils.HasError(ctx) {
-		return
-	}
-
-	data.Id = types.String{Value: fmt.Sprint(login.GetId(ctx))}
-
-	utils.SetData(ctx, &response.State, data)
+			resp.SetState(state)
+		})
 }

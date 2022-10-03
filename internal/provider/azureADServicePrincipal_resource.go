@@ -3,42 +3,30 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/resource"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/planModifiers"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ resource.ResourceWithImportState = azureADServicePrincipalResource{}
-	_ resource.ResourceWithConfigure   = &azureADServicePrincipalResource{}
-)
-
 type azureADServicePrincipalResource struct {
-	Resource
+	BaseResource
 }
 
-func (p mssqlProvider) NewAzureADServicePrincipalResource() func() resource.Resource {
-	return func() resource.Resource {
-		return &azureADServicePrincipalResource{}
+func (p mssqlProvider) NewAzureADServicePrincipalResource() func() sdkresource.Resource {
+	return func() sdkresource.Resource {
+		return resource.WrapResource[azureADServicePrincipalResourceData](&azureADServicePrincipalResource{})
 	}
 }
 
-func (s azureADServicePrincipalResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "mssql_azuread_service_principal"
+func (r *azureADServicePrincipalResource) GetName() string {
+	return "azuread_service_principal"
 }
 
-func (r *azureADServicePrincipalResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (r azureADServicePrincipalResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *azureADServicePrincipalResource) GetSchema(context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
 		MarkdownDescription: `
 Managed database-level user mapped to Azure AD identity (service principal or managed identity).
@@ -54,78 +42,64 @@ Managed database-level user mapped to Azure AD identity (service principal or ma
 				attr.Required = true
 				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
 					planModifiers.IgnoreCase(),
-					resource.RequiresReplace(),
+					sdkresource.RequiresReplace(),
 				}
 
 				return attr
 			}(),
 		},
-	}, nil
+	}
 }
 
-func (r azureADServicePrincipalResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
+func (r *azureADServicePrincipalResource) Create(ctx context.Context, req resource.CreateRequest[azureADServicePrincipalResourceData], resp *resource.CreateResponse[azureADServicePrincipalResourceData]) {
 	var (
-		data azureADServicePrincipalResourceData
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADServicePrincipalResourceData](ctx, request.Plan) }).
-		Then(func() { db = getResourceDb(ctx, r.Db, data.DatabaseId.Value) }).
-		Then(func() { user = sql.CreateUser(ctx, db, data.toSettings()) }).
+	req.
+		Then(func() { db = getResourceDb(ctx, r.conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { user = sql.CreateUser(ctx, db, req.Plan.toSettings()) }).
 		Then(func() {
-			data.Id = types.String{Value: dbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
+			req.Plan.Id = types.String{Value: dbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
 		}).
-		Then(func() { utils.SetData(ctx, &response.State, data) })
+		Then(func() { resp.State = req.Plan })
 }
 
-func (r azureADServicePrincipalResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
+func (r *azureADServicePrincipalResource) Read(ctx context.Context, req resource.ReadRequest[azureADServicePrincipalResourceData], resp *resource.ReadResponse[azureADServicePrincipalResourceData]) {
 	var (
-		data azureADServicePrincipalResourceData
 		id   dbObjectId[sql.UserId]
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADServicePrincipalResourceData](ctx, request.State) }).
-		Then(func() { id = parseDbObjectId[sql.UserId](ctx, data.Id.Value) }).
-		Then(func() { db = sql.GetDatabase(ctx, r.Db, id.DbId) }).
+	req.
+		Then(func() { id = parseDbObjectId[sql.UserId](ctx, req.State.Id.Value) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, id.DbId) }).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
 		Then(func() {
-			data = data.withSettings(ctx, user.GetSettings(ctx))
-			data.DatabaseId = types.String{Value: fmt.Sprint(id.DbId)}
-		}).
-		Then(func() { utils.SetData(ctx, &response.State, data) })
+			state := req.State.withSettings(ctx, user.GetSettings(ctx))
+			state.DatabaseId = types.String{Value: fmt.Sprint(id.DbId)}
+			resp.SetState(state)
+		})
 }
 
-func (r azureADServicePrincipalResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+func (r *azureADServicePrincipalResource) Update(context.Context, resource.UpdateRequest[azureADServicePrincipalResourceData], *resource.UpdateResponse[azureADServicePrincipalResourceData]) {
 	panic("not supported")
 }
 
-func (r azureADServicePrincipalResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
+func (r *azureADServicePrincipalResource) Delete(ctx context.Context, req resource.DeleteRequest[azureADServicePrincipalResourceData], _ *resource.DeleteResponse[azureADServicePrincipalResourceData]) {
 	var (
-		data azureADServicePrincipalResourceData
 		id   dbObjectId[sql.UserId]
 		db   sql.Database
 		user sql.User
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[azureADServicePrincipalResourceData](ctx, request.State) }).
+	req.
 		Then(func() {
-			db = getResourceDb(ctx, r.Db, data.DatabaseId.Value)
-			id = parseDbObjectId[sql.UserId](ctx, data.Id.Value)
+			db = getResourceDb(ctx, r.conn, req.State.DatabaseId.Value)
+			id = parseDbObjectId[sql.UserId](ctx, req.State.Id.Value)
 		}).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
-		Then(func() { user.Drop(ctx) }).
-		Then(func() { response.State.RemoveResource(ctx) })
-}
-
-func (r azureADServicePrincipalResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+		Then(func() { user.Drop(ctx) })
 }

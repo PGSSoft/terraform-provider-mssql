@@ -51,6 +51,20 @@ type databaseResourceData struct {
 	Collation types.String `tfsdk:"collation"`
 }
 
+func (d databaseResourceData) getDbId(ctx context.Context) sql.DatabaseId {
+	if d.Id.Unknown || d.Id.Null {
+		return sql.NullDatabaseId
+	}
+
+	id, err := strconv.Atoi(d.Id.Value)
+
+	if err != nil {
+		utils.AddError(ctx, fmt.Sprintf("Failed to convert resource ID '%s'", d.Id.Value), err)
+	}
+
+	return sql.DatabaseId(id)
+}
+
 func (d databaseResourceData) toSettings() sql.DatabaseSettings {
 	return sql.DatabaseSettings{
 		Name:      d.Name.Value,
@@ -62,6 +76,7 @@ func (d databaseResourceData) withSettings(settings sql.DatabaseSettings) databa
 	return databaseResourceData{
 		Id:   d.Id,
 		Name: types.String{Value: settings.Name},
+
 		Collation: types.String{
 			Value: settings.Collation,
 			Null:  settings.Collation == "",

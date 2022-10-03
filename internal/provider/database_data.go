@@ -3,39 +3,30 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/datasource"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ datasource.DataSourceWithConfigure = &databaseData{}
-)
-
 type databaseData struct {
-	Resource
+	BaseDataSource
 }
 
-func (p mssqlProvider) NewDatabaseDataSource() func() datasource.DataSource {
-	return func() datasource.DataSource {
-		return &databaseData{}
+func (p mssqlProvider) NewDatabaseDataSource() func() sdkdatasource.DataSource {
+	return func() sdkdatasource.DataSource {
+		return datasource.WrapDataSource[databaseResourceData](&databaseData{})
 	}
 }
 
-func (s *databaseData) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
+func (d *databaseData) GetName() string {
+	return "database"
 }
 
-func (s databaseData) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "mssql_database"
-}
-
-func (d databaseData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (d *databaseData) GetSchema(context.Context) tfsdk.Schema {
 	a := map[string]tfsdk.Attribute{}
 	for n, attribute := range databaseAttributes {
 		attribute.Required = n == "name"
@@ -46,37 +37,27 @@ func (d databaseData) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics
 	return tfsdk.Schema{
 		Description: "Obtains information about single database.",
 		Attributes:  a,
-	}, nil
+	}
 }
 
-func (d databaseData) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data, _ := getDB(ctx, request.Config)
-	if utils.HasError(ctx) {
-		return
-	}
+func (d *databaseData) Read(ctx context.Context, req datasource.ReadRequest[databaseResourceData], resp *datasource.ReadResponse[databaseResourceData]) {
+	var db sql.Database
 
-	db := sql.GetDatabaseByName(ctx, d.Db, data.Name.Value)
+	req.
+		Then(func() {
+			db = sql.GetDatabaseByName(ctx, d.conn, req.Config.Name.Value)
 
-	if db == nil || !db.Exists(ctx) {
-		response.State.RemoveResource(ctx)
-		utils.AddError(ctx, "DB does not exist", fmt.Errorf("could not find DB '%s'", data.Name.Value))
-	}
+			if db == nil || !db.Exists(ctx) {
+				utils.AddError(ctx, "DB does not exist", fmt.Errorf("could not find DB '%s'", req.Config.Name.Value))
+			}
+		}).
+		Then(func() {
+			state := req.Config.withSettings(db.GetSettings(ctx))
 
-	if utils.HasError(ctx) {
-		return
-	}
+			if state.Id.Unknown || state.Id.Null {
+				state.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))}
+			}
 
-	dbSettings := db.GetSettings(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	data = data.withSettings(dbSettings)
-
-	if data.Id.Unknown || data.Id.Null {
-		data.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))}
-	}
-
-	utils.SetData(ctx, &response.State, data)
+			resp.SetState(state)
+		})
 }

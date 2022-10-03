@@ -57,7 +57,3 @@ func (d sqlUserResourceData) withIds(dbId sql.DatabaseId, userId sql.UserId) sql
 		LoginId:    d.LoginId,
 	}
 }
-
-type sqlUserResourceBase struct {
-	Resource
-}

@@ -3,41 +3,28 @@ package provider
 import (
 	"context"
 	"fmt"
-
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/resource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ resource.ResourceWithConfigure   = &databaseResource{}
-	_ resource.ResourceWithImportState = databaseResource{}
-)
-
 type databaseResource struct {
-	Resource
+	BaseResource
 }
 
-func (p mssqlProvider) NewDatabaseResource() func() resource.Resource {
-	return func() resource.Resource {
-		return &databaseResource{}
+func (p mssqlProvider) NewDatabaseResource() func() sdkresource.Resource {
+	return func() sdkresource.Resource {
+		return resource.WrapResource[databaseResourceData](&databaseResource{})
 	}
 }
 
-func (s databaseResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "mssql_database"
+func (r *databaseResource) GetName() string {
+	return "database"
 }
 
-func (r *databaseResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (d databaseResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *databaseResource) GetSchema(context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
 		Description: "Manages single database.",
 		Attributes: map[string]tfsdk.Attribute{
@@ -51,113 +38,62 @@ func (d databaseResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnos
 				return attr
 			}(),
 		},
-	}, nil
+	}
 }
 
-func (d databaseResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data, _ := getDB(ctx, request.Plan)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *databaseResource) Create(ctx context.Context, req resource.CreateRequest[databaseResourceData], resp *resource.CreateResponse[databaseResourceData]) {
+	var db sql.Database
 
-	db := sql.CreateDatabase(ctx, d.Db, data.toSettings())
-	if utils.HasError(ctx) {
-		return
-	}
-
-	settings := db.GetSettings(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	data = data.withSettings(settings)
-	data.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))}
-	utils.SetData(ctx, &response.State, data)
+	req.
+		Then(func() { db = sql.CreateDatabase(ctx, r.conn, req.Plan.toSettings()) }).
+		Then(func() { resp.State = req.Plan.withSettings(db.GetSettings(ctx)) }).
+		Then(func() { resp.State.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))} })
 }
 
-func (d databaseResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	data, dbId := getDB(ctx, request.State)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *databaseResource) Read(ctx context.Context, req resource.ReadRequest[databaseResourceData], resp *resource.ReadResponse[databaseResourceData]) {
+	var db sql.Database
+	var dbExists bool
+	var settings sql.DatabaseSettings
 
-	db := sql.GetDatabase(ctx, d.Db, dbId)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	dbExists := db.Exists(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-	if !dbExists {
-		response.State.RemoveResource(ctx)
-		return
-	}
-
-	dbSettings := db.GetSettings(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-	utils.SetData(ctx, &response.State, data.withSettings(dbSettings))
+	req.
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, req.State.getDbId(ctx)) }).
+		Then(func() {
+			dbExists = db.Exists(ctx)
+			settings = db.GetSettings(ctx)
+		}).
+		Then(func() {
+			if dbExists {
+				resp.SetState(req.State.withSettings(settings))
+			}
+		})
 }
 
-func (d databaseResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	state, dbId := getDB(ctx, request.State)
-	plan := utils.GetData[databaseResourceData](ctx, request.Plan)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *databaseResource) Update(ctx context.Context, req resource.UpdateRequest[databaseResourceData], resp *resource.UpdateResponse[databaseResourceData]) {
+	var db sql.Database
 
-	db := sql.GetDatabase(ctx, d.Db, dbId)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	if state.Name.Value != plan.Name.Value {
-		db.Rename(ctx, plan.Name.Value)
-		if utils.HasError(ctx) {
-			return
-		}
-	}
-
-	if state.Collation.Value != plan.Collation.Value {
-		db.SetCollation(ctx, plan.Collation.Value)
-		if utils.HasError(ctx) {
-			return
-		}
-	}
-
-	settings := db.GetSettings(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-	utils.SetData(ctx, &response.State, plan.withSettings(settings))
+	req.
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, req.Plan.getDbId(ctx)) }).
+		Then(func() {
+			if req.State.Name.Value != req.Plan.Name.Value {
+				db.Rename(ctx, req.Plan.Name.Value)
+			}
+		}).
+		Then(func() {
+			if req.State.Collation.Value != req.Plan.Collation.Value {
+				db.SetCollation(ctx, req.Plan.Collation.Value)
+			}
+		}).
+		Then(func() {
+			resp.State = req.Plan.withSettings(db.GetSettings(ctx))
+		})
 }
 
-func (d databaseResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	_, dbId := getDB(ctx, request.State)
-	if utils.HasError(ctx) {
-		return
-	}
+func (r *databaseResource) Delete(ctx context.Context, req resource.DeleteRequest[databaseResourceData], _ *resource.DeleteResponse[databaseResourceData]) {
+	var dbId sql.DatabaseId
+	var db sql.Database
 
-	db := sql.GetDatabase(ctx, d.Db, dbId)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	db.Drop(ctx)
-	if utils.HasError(ctx) {
-		return
-	}
-
-	response.State.RemoveResource(ctx)
-}
-
-func (d databaseResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+	req.
+		Then(func() { dbId = req.State.getDbId(ctx) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, dbId) }).
+		Then(func() { db.Drop(ctx) })
 }

@@ -3,45 +3,34 @@ package provider
 import (
 	"context"
 	"errors"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/resource"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ resource.ResourceWithConfigure   = &databaseRoleMemberResource{}
-	_ resource.ResourceWithImportState = databaseRoleMemberResource{}
-)
-
 type databaseRoleMemberResource struct {
-	Resource
+	BaseResource
 }
 
-func (p mssqlProvider) NewDatabaseRoleMemberResource() func() resource.Resource {
-	return func() resource.Resource {
-		return &databaseRoleMemberResource{}
+func (p mssqlProvider) NewDatabaseRoleMemberResource() func() sdkresource.Resource {
+	return func() sdkresource.Resource {
+		return resource.WrapResource[databaseRoleMemberResourceData](&databaseRoleMemberResource{})
 	}
 }
 
-func (s databaseRoleMemberResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "mssql_database_role_member"
+func (r *databaseRoleMemberResource) GetName() string {
+	return "database_role_member"
 }
 
-func (r *databaseRoleMemberResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	r.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (d databaseRoleMemberResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *databaseRoleMemberResource) GetSchema(context.Context) tfsdk.Schema {
 	annotatePrincipalId := func(attrName string) tfsdk.Attribute {
 		attr := databaseRoleMemberAttributes[attrName]
 		attr.Required = true
-		attr.PlanModifiers = tfsdk.AttributePlanModifiers{resource.RequiresReplace()}
+		attr.PlanModifiers = tfsdk.AttributePlanModifiers{sdkresource.RequiresReplace()}
 		return attr
 	}
 
@@ -52,90 +41,74 @@ func (d databaseRoleMemberResource) GetSchema(context.Context) (tfsdk.Schema, di
 			"role_id":   annotatePrincipalId("role_id"),
 			"member_id": annotatePrincipalId("member_id"),
 		},
-	}, nil
+	}
 }
 
-func (d databaseRoleMemberResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
+func (r *databaseRoleMemberResource) Create(ctx context.Context, req resource.CreateRequest[databaseRoleMemberResourceData], resp *resource.CreateResponse[databaseRoleMemberResourceData]) {
 	var (
-		data     databaseRoleMemberResourceData
 		roleId   dbObjectId[sql.DatabaseRoleId]
 		memberId dbObjectId[sql.GenericDatabasePrincipalId]
 		db       sql.Database
 		role     sql.DatabaseRole
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[databaseRoleMemberResourceData](ctx, request.Plan) }).
+	req.
 		Then(func() {
-			roleId = parseDbObjectId[sql.DatabaseRoleId](ctx, data.RoleId.Value)
-			memberId = parseDbObjectId[sql.GenericDatabasePrincipalId](ctx, data.MemberId.Value)
+			roleId = parseDbObjectId[sql.DatabaseRoleId](ctx, req.Plan.RoleId.Value)
+			memberId = parseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.MemberId.Value)
 		}).
 		Then(func() {
 			if roleId.DbId != memberId.DbId {
 				utils.AddError(ctx, "Role and member must be defined in the same database", errors.New("DB IDs of role and member are different"))
 			}
 		}).
-		Then(func() { db = sql.GetDatabase(ctx, d.Db, roleId.DbId) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, roleId.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, roleId.ObjectId) }).
 		Then(func() { role.AddMember(ctx, memberId.ObjectId) }).
 		Then(func() {
-			data.Id = types.String{Value: dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]{dbObjectId: roleId, MemberId: memberId.ObjectId}.String()}
-			utils.SetData(ctx, &response.State, data)
+			req.Plan.Id = types.String{Value: dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]{dbObjectId: roleId, MemberId: memberId.ObjectId}.String()}
+			resp.State = req.Plan
 		})
 }
 
-func (d databaseRoleMemberResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
+func (r *databaseRoleMemberResource) Read(ctx context.Context, req resource.ReadRequest[databaseRoleMemberResourceData], resp *resource.ReadResponse[databaseRoleMemberResourceData]) {
 	var (
-		data databaseRoleMemberResourceData
 		id   dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]
 		db   sql.Database
 		role sql.DatabaseRole
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[databaseRoleMemberResourceData](ctx, request.State) }).
+	req.
 		Then(func() {
-			id = parseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, data.Id.Value)
+			id = parseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.Value)
 		}).
-		Then(func() { db = sql.GetDatabase(ctx, d.Db, id.DbId) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, id.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, id.ObjectId) }).
 		Then(func() {
-			if !role.HasMember(ctx, id.MemberId) && !utils.HasError(ctx) {
-				response.State.RemoveResource(ctx)
-			} else {
-				data.RoleId = types.String{Value: id.dbObjectId.String()}
-				data.MemberId = types.String{Value: id.getMemberId().String()}
-				utils.SetData(ctx, &response.State, data)
+			if role.HasMember(ctx, id.MemberId) {
+				req.State.RoleId = types.String{Value: id.dbObjectId.String()}
+				req.State.MemberId = types.String{Value: id.getMemberId().String()}
+				resp.SetState(req.State)
 			}
 		})
 }
 
-func (d databaseRoleMemberResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+func (r *databaseRoleMemberResource) Update(context.Context, resource.UpdateRequest[databaseRoleMemberResourceData], *resource.UpdateResponse[databaseRoleMemberResourceData]) {
 	panic("Resource does not support updates. All changes should trigger recreate.")
 }
 
-func (d databaseRoleMemberResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
+func (r *databaseRoleMemberResource) Delete(ctx context.Context, req resource.DeleteRequest[databaseRoleMemberResourceData], _ *resource.DeleteResponse[databaseRoleMemberResourceData]) {
 	var (
-		data databaseRoleMemberResourceData
 		id   dbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]
 		db   sql.Database
 		role sql.DatabaseRole
 	)
 
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
-	utils.StopOnError(ctx).
-		Then(func() { data = utils.GetData[databaseRoleMemberResourceData](ctx, request.State) }).
+	req.
 		Then(func() {
-			id = parseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, data.Id.Value)
+			id = parseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.Value)
 		}).
-		Then(func() { db = sql.GetDatabase(ctx, d.Db, id.DbId) }).
+		Then(func() { db = sql.GetDatabase(ctx, r.conn, id.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, id.ObjectId) }).
-		Then(func() { role.RemoveMember(ctx, id.MemberId) }).
-		Then(func() { response.State.RemoveResource(ctx) })
-}
-
-func (d databaseRoleMemberResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+		Then(func() { role.RemoveMember(ctx, id.MemberId) })
 }

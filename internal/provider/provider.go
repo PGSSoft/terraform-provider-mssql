@@ -26,25 +26,6 @@ const (
 
 const regularIdentifiersDoc = "Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers)"
 
-type Resource struct {
-	Db sql.Connection
-}
-
-func (r *Resource) Configure(_ context.Context, data any, diag *diag.Diagnostics) {
-	if data == nil {
-		return
-	}
-
-	db, ok := data.(sql.Connection)
-
-	if !ok {
-		diag.AddError("Unexpected data source configure type", fmt.Sprintf("Expected sql.Connection, got: %T. Please report this issue to the provider developers.", data))
-		return
-	}
-
-	r.Db = db
-}
-
 type sqlAuth struct {
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`

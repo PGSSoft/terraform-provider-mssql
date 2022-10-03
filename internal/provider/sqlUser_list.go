@@ -3,32 +3,22 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/datasource"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure resource types fully satisfy framework interfaces
-var (
-	_ datasource.DataSourceWithConfigure = &sqlUserList{}
-)
-
-func (p mssqlProvider) NewSqlUserListDataSource() func() datasource.DataSource {
-	return func() datasource.DataSource {
-		return &sqlUserList{}
+func (p mssqlProvider) NewSqlUserListDataSource() func() sdkdatasource.DataSource {
+	return func() sdkdatasource.DataSource {
+		return datasource.WrapDataSource[sqlUserListData](&sqlUserList{})
 	}
 }
 
-func (s *sqlUserList) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	s.Resource.Configure(ctx, req.ProviderData, &resp.Diagnostics)
-}
-
-func (s sqlUserList) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = "mssql_sql_users"
+func (l *sqlUserList) GetName() string {
+	return "sql_users"
 }
 
 type sqlUserListData struct {
@@ -38,10 +28,10 @@ type sqlUserListData struct {
 }
 
 type sqlUserList struct {
-	sqlUserResourceBase
+	BaseDataSource
 }
 
-func (s sqlUserList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (l *sqlUserList) GetSchema(context.Context) tfsdk.Schema {
 	attrs := map[string]tfsdk.Attribute{}
 	for n, attr := range sqlUserAttributes {
 		attr.Computed = true
@@ -68,35 +58,30 @@ func (s sqlUserList) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Computed:    true,
 			},
 		},
-	}, nil
+	}
 }
 
-func (s sqlUserList) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
-	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+func (l *sqlUserList) Read(ctx context.Context, req datasource.ReadRequest[sqlUserListData], resp *datasource.ReadResponse[sqlUserListData]) {
+	var db sql.Database
+	var dbId sql.DatabaseId
 
-	data := utils.GetData[sqlUserListData](ctx, request.Config)
-	if utils.HasError(ctx) {
-		return
-	}
+	req.
+		Then(func() { db = getResourceDb(ctx, l.conn, req.Config.DatabaseId.Value) }).
+		Then(func() { dbId = db.GetId(ctx) }).
+		Then(func() {
+			state := sqlUserListData{
+				DatabaseId: types.String{Value: fmt.Sprint(dbId)},
+			}
+			state.Id = state.DatabaseId
 
-	db := getResourceDb(ctx, s.Db, data.DatabaseId.Value)
-	dbId := db.GetId(ctx)
-	data.DatabaseId = types.String{Value: fmt.Sprint(dbId)}
-	data.Id = data.DatabaseId
-	if utils.HasError(ctx) {
-		return
-	}
+			for id, user := range sql.GetUsers(ctx, db) {
+				s := user.GetSettings(ctx)
 
-	for id, user := range sql.GetUsers(ctx, db) {
-		s := user.GetSettings(ctx)
-		if utils.HasError(ctx) {
-			return
-		}
+				if s.Type == sql.USER_TYPE_SQL {
+					state.Users = append(state.Users, sqlUserResourceData{}.withIds(dbId, id).withSettings(s))
+				}
+			}
 
-		if s.Type == sql.USER_TYPE_SQL {
-			data.Users = append(data.Users, sqlUserResourceData{}.withIds(dbId, id).withSettings(s))
-		}
-	}
-
-	utils.SetData(ctx, &response.State, data)
+			resp.SetState(state)
+		})
 }

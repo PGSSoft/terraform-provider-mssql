@@ -1,0 +1,111 @@
+package resource
+
+import (
+	"context"
+	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+)
+
+var (
+	_ resource.ResourceWithConfigure   = resourceWrapper[any]{}
+	_ resource.ResourceWithImportState = resourceWrapper[any]{}
+)
+
+func WrapResource[T any](r Resource[T]) resource.ResourceWithConfigure {
+	return resourceWrapper[T]{r: r}
+}
+
+type resourceWrapper[T any] struct {
+	r Resource[T]
+}
+
+func (r resourceWrapper[T]) Metadata(_ context.Context, request resource.MetadataRequest, response *resource.MetadataResponse) {
+	response.TypeName = fmt.Sprintf("%s_%s", request.ProviderTypeName, r.r.GetName())
+}
+
+func (r resourceWrapper[T]) Configure(ctx context.Context, request resource.ConfigureRequest, response *resource.ConfigureResponse) {
+	if request.ProviderData == nil {
+		return
+	}
+
+	db, ok := request.ProviderData.(sql.Connection)
+
+	if !ok {
+		response.Diagnostics.AddError(
+			"Unexpected data source configure type",
+			fmt.Sprintf("Expected sql.Connection, got: %T. Please report this issue to the provider developers.", request.ProviderData))
+		return
+	}
+
+	r.r.Configure(utils.WithDiagnostics(ctx, &response.Diagnostics), ConfigureRequest{Conn: db})
+}
+
+func (r resourceWrapper[T]) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	diags := diag.Diagnostics{}
+	return r.r.GetSchema(utils.WithDiagnostics(ctx, &diags)), diags
+}
+
+func (r resourceWrapper[T]) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	req := CreateRequest[T]{}
+	req.monad = utils.StopOnError(ctx).Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) })
+
+	resp := CreateResponse[T]{}
+	r.r.Create(ctx, req, &resp)
+
+	req.monad.Then(func() { utils.SetData(ctx, &response.State, resp.State) })
+}
+
+func (r resourceWrapper[T]) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	req := ReadRequest[T]{}
+	req.monad = utils.StopOnError(ctx).Then(func() { req.State = utils.GetData[T](ctx, request.State) })
+
+	resp := ReadResponse[T]{}
+	r.r.Read(ctx, req, &resp)
+
+	req.monad.Then(func() {
+		if resp.exists {
+			utils.SetData(ctx, &response.State, resp.state)
+		} else {
+			response.State.RemoveResource(ctx)
+		}
+	})
+}
+
+func (r resourceWrapper[T]) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	req := UpdateRequest[T]{}
+	req.monad = utils.StopOnError(ctx).
+		Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) }).
+		Then(func() { req.State = utils.GetData[T](ctx, request.State) })
+
+	resp := UpdateResponse[T]{}
+	r.r.Update(ctx, req, &resp)
+
+	req.monad.Then(func() { utils.SetData(ctx, &response.State, resp.State) })
+}
+
+func (r resourceWrapper[T]) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	req := DeleteRequest[T]{}
+	req.monad = utils.StopOnError(ctx).Then(func() { req.State = utils.GetData[T](ctx, request.State) })
+
+	resp := DeleteResponse[T]{}
+	r.r.Delete(ctx, req, &resp)
+
+	req.monad.Then(func() { response.State.RemoveResource(ctx) })
+}
+
+func (r resourceWrapper[T]) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+}
