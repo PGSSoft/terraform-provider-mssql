@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.23.0
 	github.com/microsoft/go-mssqldb v0.17.0
 	github.com/microsoft/kiota-authentication-azure-go v0.4.1
-	github.com/microsoftgraph/msgraph-sdk-go v0.41.0
+	github.com/microsoftgraph/msgraph-sdk-go v0.41.2
 	github.com/stretchr/testify v1.8.0
 )
 
@@ -70,7 +70,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/microsoft/kiota-abstractions-go v0.11.0 // indirect
 	github.com/microsoft/kiota-http-go v0.8.1 // indirect
-	github.com/microsoft/kiota-serialization-json-go v0.7.1 // indirect
+	github.com/microsoft/kiota-serialization-json-go v0.7.2 // indirect
 	github.com/microsoft/kiota-serialization-text-go v0.6.0 // indirect
 	github.com/microsoftgraph/msgraph-sdk-go-core v0.29.0 // indirect
 	github.com/mitchellh/cli v1.1.4 // indirect
