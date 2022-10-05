@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.23.0
 	github.com/microsoft/go-mssqldb v0.17.0
-	github.com/microsoft/kiota-authentication-azure-go v0.4.1
+	github.com/microsoft/kiota-authentication-azure-go v0.5.0
 	github.com/microsoftgraph/msgraph-sdk-go v0.41.0
 	github.com/stretchr/testify v1.8.0
 )
@@ -37,6 +37,8 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
@@ -68,7 +70,7 @@ require (
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/microsoft/kiota-abstractions-go v0.11.0 // indirect
+	github.com/microsoft/kiota-abstractions-go v0.12.0 // indirect
 	github.com/microsoft/kiota-http-go v0.8.1 // indirect
 	github.com/microsoft/kiota-serialization-json-go v0.7.1 // indirect
 	github.com/microsoft/kiota-serialization-text-go v0.6.0 // indirect
@@ -98,6 +100,8 @@ require (
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/zclconf/go-cty v1.11.0 // indirect
+	go.opentelemetry.io/otel v1.10.0 // indirect
+	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
