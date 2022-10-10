@@ -6,8 +6,8 @@ resource "azurerm_mssql_server" "this" {
 
   azuread_administrator {
     azuread_authentication_only = true
-    login_username              = data.azurerm_client_config.current.object_id
-    object_id                   = data.azurerm_client_config.current.object_id
+    login_username              = lookup(data.environment_variables.arm.items, "ARM_CLIENT_ID", data.azurerm_client_config.current.object_id)
+    object_id                   = lookup(data.environment_variables.arm.items, "ARM_CLIENT_ID", data.azurerm_client_config.current.object_id)
   }
 }
 

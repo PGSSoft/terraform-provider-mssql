@@ -1,6 +1,27 @@
 # This file is maintained automatically by "terraform init".
 # Manual edits may be lost in future updates.
 
+provider "registry.terraform.io/eppo/environment" {
+  version = "1.3.3"
+  hashes = [
+    "h1:tDHTb4ovkPkAXCJ4gDCH6+3I2XsRt4SC7/zdMCUq+Tk=",
+    "zh:054461b645416fee1c6e2997d13c68cd0d2ca5097b0c68630c5df96f2908787f",
+    "zh:112e8ebbaf09fbf4d3718a481848c856b87ce33c0f70ffeb26330bc8781a231d",
+    "zh:30c3f981366338d7fee96507075bc3a6e7585eadc890a9a0c74c3fca28926343",
+    "zh:3626ce852a35bb36608805f142c091cec02773342e7de0875fdc8061af9a664d",
+    "zh:47b5f2d0be504f34123575fc60e6d0edfe7f78b830bdf6b2069e0a09c7d1a3f4",
+    "zh:88b52dd53ea38e38a5b4ead3a153f9e8fb5458b808dd72ead53c29a7123fffbc",
+    "zh:b8d1add5ebba658f8609307961aa5f9a80a59755238b1be3c2ea5e60e9ca9ed9",
+    "zh:bf1a1cedc20bea78ed2f273f58938103d30c585ef76db79301bd95eb2ae4589e",
+    "zh:c21d6a8cab0811872c3bf4ce60a195832cca2cf7f9e373622efb254e78fa23a4",
+    "zh:d733761695df777803d9b2deb85282112884d3abcccbe6a42e1740b5c2093251",
+    "zh:d94dd321d4a05d982c28235338212547b8ba5d097645c6f521ece53f99ceeff2",
+    "zh:e3719e79d2c756115dc890c0d5c13742d26746db243663b1c40b5e41132e10ba",
+    "zh:eb539ab3a8019c17852440793f19d5a947c4f3364c8e1df5773ba65f5650bcef",
+    "zh:f25b3288efbe8d7f40b64a9fc659713b8faa2c6c02668a2b4a026656253fbf15",
+  ]
+}
+
 provider "registry.terraform.io/hashicorp/azurerm" {
   version = "3.25.0"
   hashes = [

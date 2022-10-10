@@ -3,6 +3,10 @@ terraform {
     publicip = {
       source = "nxt-engineering/publicip"
     }
+
+    environment = {
+      source = "EppO/environment"
+    }
   }
 }
 

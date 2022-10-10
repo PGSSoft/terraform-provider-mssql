@@ -8,3 +8,6 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
+data "environment_variables" "arm" {
+  filter = "^ARM_"
+}
