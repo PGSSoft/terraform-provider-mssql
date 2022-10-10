@@ -12,7 +12,7 @@ import (
 )
 
 func TestAADServicePrincipalResource(t *testing.T) {
-	if !isAzureTest {
+	if !testCtx.IsAzureTest {
 		return
 	}
 
@@ -21,42 +21,38 @@ func TestAADServicePrincipalResource(t *testing.T) {
 
 	newResource := func(resourceName string, name string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[4]q
-}
-
 resource "mssql_azuread_service_principal" %[1]q {
 	name = %[2]q
-	database_id = data.mssql_database.%[1]s.id
+	database_id = %[4]d
 	client_id = %[3]q
 }
-`, resourceName, name, azureMSIClientID, defaultDbName)
+`, resourceName, name, testCtx.AzureTestMSI.ClientId, testCtx.DefaultDBId)
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: newResource("test_user", "test_aad_user"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck(defaultDbName, func(db *sql.DB) error {
+					testCtx.SqlCheckDefaultDB(func(db *sql.DB) error {
 						if err := db.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name] = 'test_aad_user'").Scan(&userId); err != nil {
 							return err
 						}
 
-						userResourceId = fmt.Sprintf("%d/%d", defaultDbId, userId)
+						userResourceId = fmt.Sprintf("%d/%d", testCtx.DefaultDBId, userId)
 
 						return nil
 					}),
 					resource.ComposeAggregateTestCheckFunc(
 						resource.TestCheckResourceAttrPtr("mssql_azuread_service_principal.test_user", "id", &userResourceId),
-						sqlCheck(defaultDbName, func(db *sql.DB) error {
+						testCtx.SqlCheckDefaultDB(func(db *sql.DB) error {
 							var userType, userSid string
 							err := db.QueryRow("SELECT [type], CONVERT(VARCHAR(36), CONVERT(UNIQUEIDENTIFIER, [sid], 1), 1) FROM sys.database_principals WHERE principal_id = @p1", userId).
 								Scan(&userType, &userSid)
 
 							assert.Equal(t, "E", strings.ToUpper(userType), "user type")
-							assert.Equal(t, strings.ToUpper(azureMSIClientID), strings.ToUpper(userSid), "user SID")
+							assert.Equal(t, strings.ToUpper(testCtx.AzureTestMSI.ClientId), strings.ToUpper(userSid), "user SID")
 
 							return err
 						}),
@@ -73,8 +69,8 @@ resource "mssql_azuread_service_principal" %[1]q {
 					for _, state := range states {
 						if state.ID == userResourceId {
 							assert.Equal(t, "test_aad_user", state.Attributes["name"])
-							assert.Equal(t, fmt.Sprint(defaultDbId), state.Attributes["database_id"])
-							assert.Equal(t, strings.ToUpper(azureMSIClientID), strings.ToUpper(state.Attributes["client_id"]))
+							assert.Equal(t, fmt.Sprint(testCtx.DefaultDBId), state.Attributes["database_id"])
+							assert.Equal(t, strings.ToUpper(testCtx.AzureTestMSI.ClientId), strings.ToUpper(state.Attributes["client_id"]))
 						}
 					}
 

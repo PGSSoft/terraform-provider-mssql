@@ -12,7 +12,6 @@ func WithConnection[T any](ctx context.Context, connectionFactory func(context.C
 		var result T
 		return result
 	}
-	defer conn.Close()
 
 	return action(conn)
 }

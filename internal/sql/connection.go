@@ -3,13 +3,16 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/kofalt/go-memoize"
 	"net/url"
 	"regexp"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/microsoft/go-mssqldb/azuread"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
 var azureSQLEditionPattern = regexp.MustCompile("^SQL Azure.*")
@@ -30,11 +33,13 @@ type Connection interface {
 	exec(_ context.Context, query string, args ...any) sql.Result
 	getConnectionDetails(context.Context) ConnectionDetails
 	getSqlConnection(context.Context) *sql.DB
+	getDBSqlConnection(_ context.Context, dbName string) *sql.DB
 }
 
 type connection struct {
 	connDetails ConnectionDetails
 	conn        *sql.DB
+	dbConnCache *memoize.Memoizer
 }
 
 func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnostics) {
@@ -45,10 +50,16 @@ func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnost
 		diags.AddError("Could not connect to SQL endpoint", err.Error())
 	}
 
-	return connection{conn: db, connDetails: cd}, diags
+	conn := connection{conn: db, connDetails: cd, dbConnCache: memoize.NewMemoizer(2*time.Hour, time.Hour)}
+
+	conn.dbConnCache.Storage.OnEvicted(func(_ string, dbConn interface{}) {
+		dbConn.(*sql.DB).Close()
+	})
+
+	return &conn, diags
 }
 
-func (c connection) IsAzure(ctx context.Context) bool {
+func (c *connection) IsAzure(ctx context.Context) bool {
 	var edition string
 	if err := c.conn.QueryRowContext(ctx, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
 		utils.AddError(ctx, "Failed to determine server edition", err)
@@ -76,7 +87,7 @@ func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, di
 	return u.String(), diags
 }
 
-func (c connection) exec(ctx context.Context, query string, args ...any) sql.Result {
+func (c *connection) exec(ctx context.Context, query string, args ...any) sql.Result {
 	res, err := c.conn.ExecContext(ctx, query, args...)
 
 	if err != nil {
@@ -86,10 +97,46 @@ func (c connection) exec(ctx context.Context, query string, args ...any) sql.Res
 	return res
 }
 
-func (c connection) getConnectionDetails(context.Context) ConnectionDetails {
+func (c *connection) getConnectionDetails(context.Context) ConnectionDetails {
 	return c.connDetails
 }
 
-func (c connection) getSqlConnection(context.Context) *sql.DB {
+func (c *connection) getSqlConnection(context.Context) *sql.DB {
 	return c.conn
+}
+
+func (c *connection) getDBSqlConnection(ctx context.Context, dbName string) *sql.DB {
+	connDetails := c.getConnectionDetails(ctx)
+	connDetails.Database = dbName
+
+	connStr, diags := connDetails.getConnectionString(ctx)
+	utils.AppendDiagnostics(ctx, diags...)
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	driverName := connDetails.Auth.getDriverName()
+
+	conn, err, _ := c.dbConnCache.Memoize(fmt.Sprintf("%s||%s", driverName, connStr), func() (interface{}, error) {
+		var err error
+		var conn *sql.DB
+		for i := time.Second; i <= 5*time.Second; i += time.Second {
+			conn, err = sql.Open(driverName, connStr)
+
+			if err == nil {
+				return conn, nil
+			}
+
+			time.Sleep(i)
+		}
+
+		return nil, err
+	})
+
+	if err != nil {
+		utils.AddError(ctx, "Failed to open DB connection", err)
+		return nil
+	}
+
+	return conn.(*sql.DB)
 }

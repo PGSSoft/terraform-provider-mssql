@@ -1,69 +1,59 @@
 package provider
 
 import (
-	"database/sql"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/require"
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAzureADServicePrincipalData(t *testing.T) {
-	if !isAzureTest {
+	if !testCtx.IsAzureTest {
 		return
 	}
 
 	configWithName := func(resourceName string, userName string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[3]q
-}
-
 data "mssql_azuread_service_principal" %[1]q {
 	name 		= %[2]q
-	database_id = data.mssql_database.%[1]s.id
+	database_id = %[3]d
 }
-`, resourceName, userName, defaultDbName)
+`, resourceName, userName, testCtx.DefaultDBId)
 	}
 
 	configWithObjectId := func(resourceName string, objectId string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[3]q
-}
-
 data "mssql_azuread_service_principal" %[1]q {
 	client_id 	= %[2]q
-	database_id	= data.mssql_database.%[1]s.id
+	database_id	= %[3]d
 }
-`, resourceName, objectId, defaultDbName)
+`, resourceName, objectId, testCtx.DefaultDBId)
 	}
 
 	var userResourceId string
 
-	defer execDefaultDB(t, "DROP USER [%s]", azureMSIName)
+	defer testCtx.ExecDefaultDB(t, "DROP USER [%s]", testCtx.AzureTestMSI.Name)
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
-		PreCheck: func() {
-			withDefaultDBConnection(func(conn *sql.DB) {
-				_, err := conn.Exec(`
-				DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
-				EXEC(@SQL)`, azureMSIName, azureMSIClientID)
-				require.NoError(t, err, "Creating AAD user")
-
-				var userId int
-				err = conn.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name]=@p1", azureMSIName).Scan(&userId)
-				require.NoError(t, err, "Fetching AAD user ID")
-
-				userResourceId = fmt.Sprintf("%d/%d", defaultDbId, userId)
-			})
-		},
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
+				PreConfig: func() {
+					conn := testCtx.GetDefaultDBConnection()
+
+					_, err := conn.Exec(`
+DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
+EXEC(@SQL)`, testCtx.AzureTestMSI.Name, testCtx.AzureTestMSI.ClientId)
+					require.NoError(t, err, "Creating AAD user")
+
+					var userId int
+					err = conn.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name]=@p1", testCtx.AzureTestMSI.Name).Scan(&userId)
+					require.NoError(t, err, "Fetching AAD user ID")
+
+					userResourceId = fmt.Sprintf("%d/%d", testCtx.DefaultDBId, userId)
+				},
 				Config:      configWithName("not_existing_name", "not_existing_name"),
 				ExpectError: regexp.MustCompile("not exist"),
 			},
@@ -72,17 +62,17 @@ data "mssql_azuread_service_principal" %[1]q {
 				ExpectError: regexp.MustCompile("not exist"),
 			},
 			{
-				Config: configWithName("existing_name", azureMSIName),
+				Config: configWithName("existing_name", testCtx.AzureTestMSI.Name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_service_principal.existing_name", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_name", "client_id", strings.ToUpper(azureMSIClientID)),
+					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_name", "client_id", strings.ToUpper(testCtx.AzureTestMSI.ClientId)),
 				),
 			},
 			{
-				Config: configWithObjectId("existing_id", azureMSIClientID),
+				Config: configWithObjectId("existing_id", testCtx.AzureTestMSI.ClientId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_service_principal.existing_id", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_id", "name", azureMSIName),
+					resource.TestCheckResourceAttr("data.mssql_azuread_service_principal.existing_id", "name", testCtx.AzureTestMSI.Name),
 				),
 			},
 		},

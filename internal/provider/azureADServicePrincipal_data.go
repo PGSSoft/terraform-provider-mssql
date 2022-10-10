@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/datasource"
-	"strings"
-
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"strings"
 )
 
 type azureADServicePrincipalData struct {

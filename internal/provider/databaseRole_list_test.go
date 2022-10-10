@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"database/sql"
 	"fmt"
 	"testing"
 
@@ -13,13 +12,13 @@ import (
 func TestDatabaseRoleListData(t *testing.T) {
 	var roleResourceId, ownerResourceId string
 
-	defer execDefaultDB(t, `
+	defer testCtx.ExecDefaultDB(t, `
 DROP ROLE [test_role];
 DROP ROLE [test_owner];
 		`)
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: `data "mssql_database_roles" "master" {}`,
@@ -32,34 +31,29 @@ DROP ROLE [test_owner];
 			},
 			{
 				PreConfig: func() {
-					withDefaultDBConnection(func(conn *sql.DB) {
-						var roleId, ownerId int
-						err := conn.QueryRow(`
+					conn := testCtx.GetDefaultDBConnection()
+					var roleId, ownerId int
+					err := conn.QueryRow(`
 CREATE ROLE test_owner;
 CREATE ROLE test_role AUTHORIZATION test_owner;
 SELECT DATABASE_PRINCIPAL_ID('test_role'), DATABASE_PRINCIPAL_ID('test_owner');
 `).Scan(&roleId, &ownerId)
 
-						require.NoError(t, err, "creating role")
+					require.NoError(t, err, "creating role")
 
-						roleResourceId = fmt.Sprintf("%d/%d", defaultDbId, roleId)
-						ownerResourceId = fmt.Sprintf("%d/%d", defaultDbId, ownerId)
-					})
+					roleResourceId = fmt.Sprintf("%d/%d", testCtx.DefaultDBId, roleId)
+					ownerResourceId = fmt.Sprintf("%d/%d", testCtx.DefaultDBId, ownerId)
 				},
 				Config: fmt.Sprintf(`
-data "mssql_database" "test" {
-	name = %[1]q
-}
-
 data "mssql_database_roles" "test" {
-	database_id = data.mssql_database.test.id
+	database_id = %d
 }
-`, defaultDbName),
+`, testCtx.DefaultDBId),
 				Check: func(state *terraform.State) error {
 					return resource.TestCheckTypeSetElemNestedAttrs("data.mssql_database_roles.test", "roles.*", map[string]string{
 						"id":          roleResourceId,
 						"name":        "test_role",
-						"database_id": fmt.Sprint(defaultDbId),
+						"database_id": fmt.Sprint(testCtx.DefaultDBId),
 						"owner_id":    ownerResourceId,
 					})(state)
 				},

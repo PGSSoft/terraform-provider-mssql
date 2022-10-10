@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
@@ -12,55 +11,46 @@ import (
 )
 
 func TestAzureADUserData(t *testing.T) {
-	if !isAzureTest {
+	if !testCtx.IsAzureTest {
 		return
 	}
 
 	configWithName := func(resourceName string, userName string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[3]q
-}
-
 data "mssql_azuread_user" %[1]q {
 	name 		= %[2]q
-	database_id = data.mssql_database.%[1]s.id
+	database_id = %[3]d
 }
-`, resourceName, userName, defaultDbName)
+`, resourceName, userName, testCtx.DefaultDBId)
 	}
 
 	configWithObjectId := func(resourceName string, objectId string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[3]q
-}
-
 data "mssql_azuread_user" %[1]q {
 	user_object_id 	= %[2]q
-	database_id		= data.mssql_database.%[1]s.id
+	database_id		= %[3]d
 }
-`, resourceName, objectId, defaultDbName)
+`, resourceName, objectId, testCtx.DefaultDBId)
 	}
 
 	var userResourceId string
 
-	defer execDefaultDB(t, "DROP USER [%s]", azureAdTestGroupName)
+	defer testCtx.ExecDefaultDB(t, "DROP USER [%s]", testCtx.AzureADTestGroup.Name)
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		PreCheck: func() {
-			withDefaultDBConnection(func(conn *sql.DB) {
-				_, err := conn.Exec(`
+			conn := testCtx.GetDefaultDBConnection()
+			_, err := conn.Exec(`
 				DECLARE @SQL NVARCHAR(MAX) = 'CREATE USER [' + @p1 + '] WITH SID=' + (SELECT CONVERT(VARCHAR(85), CONVERT(VARBINARY(85), CAST(@p2 AS UNIQUEIDENTIFIER), 1), 1)) + ', TYPE=E';
-				EXEC(@SQL)`, azureAdTestGroupName, azureAdTestGroupId)
-				require.NoError(t, err, "Creating AAD user")
+				EXEC(@SQL)`, testCtx.AzureADTestGroup.Name, testCtx.AzureADTestGroup.Id)
+			require.NoError(t, err, "Creating AAD user")
 
-				var userId int
-				err = conn.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name]=@p1", azureAdTestGroupName).Scan(&userId)
-				require.NoError(t, err, "Fetching AAD user ID")
+			var userId int
+			err = conn.QueryRow("SELECT principal_id FROM sys.database_principals WHERE [name]=@p1", testCtx.AzureADTestGroup.Name).Scan(&userId)
+			require.NoError(t, err, "Fetching AAD user ID")
 
-				userResourceId = fmt.Sprintf("%d/%d", defaultDbId, userId)
-			})
+			userResourceId = fmt.Sprintf("%d/%d", testCtx.DefaultDBId, userId)
 		},
 		Steps: []resource.TestStep{
 			{
@@ -72,17 +62,17 @@ data "mssql_azuread_user" %[1]q {
 				ExpectError: regexp.MustCompile("not exist"),
 			},
 			{
-				Config: configWithName("existing_name", azureAdTestGroupName),
+				Config: configWithName("existing_name", testCtx.AzureADTestGroup.Name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_user.existing_name", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_name", "user_object_id", strings.ToUpper(azureAdTestGroupId)),
+					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_name", "user_object_id", strings.ToUpper(testCtx.AzureADTestGroup.Id)),
 				),
 			},
 			{
-				Config: configWithObjectId("existing_id", azureAdTestGroupId),
+				Config: configWithObjectId("existing_id", testCtx.AzureADTestGroup.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_azuread_user.existing_id", "id", &userResourceId),
-					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_id", "name", azureAdTestGroupName),
+					resource.TestCheckResourceAttr("data.mssql_azuread_user.existing_id", "name", testCtx.AzureADTestGroup.Name),
 				),
 			},
 		},

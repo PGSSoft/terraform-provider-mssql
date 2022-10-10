@@ -13,19 +13,15 @@ import (
 
 func TestDatabaseRoleData(t *testing.T) {
 	var roleResourceId, ownerResourceId, roleMemberResourceId, userMemberResourceId string
-	dbId := fmt.Sprint(defaultDbId)
+	dbId := fmt.Sprint(testCtx.DefaultDBId)
 
 	newDataResource := func(resourceName string, roleName string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[3]q
-}
-
 data "mssql_database_role" %[1]q {
 	name = %[2]q
-	database_id = data.mssql_database.%[1]s.id
+	database_id = %[3]d
 }
-`, resourceName, roleName, defaultDbName)
+`, resourceName, roleName, testCtx.DefaultDBId)
 	}
 
 	formatId := func(id int) string { return fmt.Sprintf("%s/%d", dbId, id) }
@@ -44,7 +40,7 @@ data "mssql_database_role" %[1]q {
 		)
 	}
 
-	defer execDefaultDB(t, `
+	defer testCtx.ExecDefaultDB(t, `
 ALTER ROLE [test_role] DROP MEMBER [test_role_member];
 ALTER ROLE [test_role] DROP MEMBER [test_user_member];
 DROP ROLE [test_role];
@@ -54,7 +50,7 @@ DROP USER [test_user_member];
 		`)
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -62,10 +58,10 @@ DROP USER [test_user_member];
 			},
 			{
 				PreConfig: func() {
-					withDefaultDBConnection(func(conn *sql.DB) {
-						var roleId, ownerId, roleMemberId, userMemberId int
+					conn := testCtx.GetDefaultDBConnection()
+					var roleId, ownerId, roleMemberId, userMemberId int
 
-						err := conn.QueryRow(`
+					err := conn.QueryRow(`
 CREATE ROLE [test_owner];
 CREATE ROLE [test_role_member];
 CREATE USER [test_user_member] WITHOUT LOGIN;
@@ -79,11 +75,10 @@ SELECT
     DATABASE_PRINCIPAL_ID('test_user_member');
 `).Scan(&roleId, &ownerId, &roleMemberId, &userMemberId)
 
-						require.NoError(t, err, "creating role")
-						setIds(roleId, ownerId)
-						roleMemberResourceId = formatId(roleMemberId)
-						userMemberResourceId = formatId(userMemberId)
-					})
+					require.NoError(t, err, "creating role")
+					setIds(roleId, ownerId)
+					roleMemberResourceId = formatId(roleMemberId)
+					userMemberResourceId = formatId(userMemberId)
 				},
 				Config: newDataResource("exists", "test_role"),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -114,7 +109,7 @@ data "mssql_database_role" "master" {
 }
 `,
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						var roleId, ownerId int
 						err := db.QueryRow("SELECT database_id, DATABASE_PRINCIPAL_ID('public'), DATABASE_PRINCIPAL_ID('dbo') FROM sys.databases WHERE [name]='master'").
 							Scan(&dbId, &roleId, &ownerId)

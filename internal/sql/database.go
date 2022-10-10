@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
-	"time"
 )
 
 const NullDatabaseId = DatabaseId(-1)
@@ -145,27 +144,5 @@ func (db database) connect(ctx context.Context) *sql.DB {
 		return nil
 	}
 
-	connDetails := db.conn.getConnectionDetails(ctx)
-	connDetails.Database = settings.Name
-
-	connStr, diags := connDetails.getConnectionString(ctx)
-	utils.AppendDiagnostics(ctx, diags...)
-	if utils.HasError(ctx) {
-		return nil
-	}
-
-	var err error
-	var conn *sql.DB
-	for i := time.Second; i <= 5*time.Second; i += time.Second {
-		conn, err = sql.Open(connDetails.Auth.getDriverName(), connStr)
-
-		if err == nil {
-			return conn
-		}
-
-		time.Sleep(i)
-	}
-
-	utils.AddError(ctx, "Failed to open DB connection", err)
-	return nil
+	return db.conn.getDBSqlConnection(ctx, settings.Name)
 }

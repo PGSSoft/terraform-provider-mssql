@@ -69,9 +69,9 @@ jobs:
           - '1.1.*'
           - '1.2.*'
           - '1.3.*'
-        mssql:
-          - '2019-latest'
-          - 'azure-sql'
+        makeTarget:
+          - dockerAccTest
+          - azureAccTest
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -82,12 +82,12 @@ jobs:
           terraform_wrapper: false
       - uses: actions/checkout@v3
       - run: go mod download
-      - run: go test --timeout 60m -v -cover ./internal/...
+      - run: make ${{ matrix.makeTarget }}
         env:
-          TF_ACC: "1"
-          TF_MSSQL_IMG_TAG: ${{ matrix.mssql }}
-          TF_AZURE_SUBSCRIPTION_ID: ed349b81-e2df-40e0-ade4-9fc864f5a743
-          TF_AZURE_RESOURCE_GROUP: terraform-mssql-tests
           AZURE_CLIENT_ID: 139df37c-3e72-4283-80c1-7be62f3d8e64
           AZURE_TENANT_ID: 7029fc72-c85c-4ecd-86f6-1ab9852b576f
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_CLIENT_ID: 139df37c-3e72-4283-80c1-7be62f3d8e64
+          ARM_TENANT_ID: 7029fc72-c85c-4ecd-86f6-1ab9852b576f
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ed349b81-e2df-40e0-ade4-9fc864f5a743

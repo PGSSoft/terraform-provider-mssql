@@ -1,7 +1,6 @@
 package provider
 
 import (
-	sql2 "database/sql"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -23,13 +22,11 @@ data "mssql_database" "test" {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		PreCheck: func() {
-			dbId = fmt.Sprint(createDB(t, dbSettings.Name))
-			withDBConnection("master", func(conn *sql2.DB) {
-				_, err := conn.Exec("ALTER DATABASE [data_test_db] COLLATE SQL_Latin1_General_CP1_CS_AS")
-				require.NoError(t, err, "Setting DB collation")
-			})
+			dbId = fmt.Sprint(testCtx.CreateDB(t, dbSettings.Name))
+			_, err := testCtx.GetDBConnection(dbSettings.Name).Exec("ALTER DATABASE [data_test_db] COLLATE SQL_Latin1_General_CP1_CS_AS")
+			require.NoError(t, err, "Setting DB collation")
 		},
 		Steps: []resource.TestStep{
 			{

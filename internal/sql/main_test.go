@@ -30,7 +30,7 @@ func init() {
 
 type SqlTestSuite struct {
 	suite.Suite
-	conn        connection
+	conn        *connection
 	dbMock      dbMock
 	mock        sqlmock.Sqlmock
 	diags       *diag.Diagnostics
@@ -42,7 +42,7 @@ func (s *SqlTestSuite) SetupTest() {
 	db, sMock, err := sqlmock.New()
 	s.Require().NoError(err, "SQL mock")
 	s.mock = sMock
-	s.conn = connection{conn: db, connDetails: ConnectionDetails{Auth: ConnectionAuthSql{}}}
+	s.conn = &connection{conn: db, connDetails: ConnectionDetails{Auth: ConnectionAuthSql{}}}
 	s.dbMock = dbMock{}
 	s.dbMock.On("connect", mock.Anything).Return(db)
 	s.dbMock.On("GetConnection", mock.Anything).Return(s.conn)

@@ -3,8 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -12,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"os"
 )
 
 // To ensure provider fully satisfies framework interfaces

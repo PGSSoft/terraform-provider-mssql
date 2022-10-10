@@ -30,7 +30,7 @@ resource "mssql_database" %[1]q {
 	var dbId, dbCollation string
 
 	var checkCollation = func(dbName string, expected string) resource.TestCheckFunc {
-		return sqlCheck("master", func(db *sql.DB) error {
+		return testCtx.SqlCheckMaster(func(db *sql.DB) error {
 			var collation string
 			err := db.QueryRow("SELECT collation_name FROM sys.databases WHERE name = @p1", dbName).Scan(&collation)
 			assert.Equal(t, expected, collation)
@@ -39,12 +39,12 @@ resource "mssql_database" %[1]q {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: newDatabaseResource("test", "new_db"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						return db.QueryRow("SELECT database_id, collation_name FROM sys.databases WHERE name = 'new_db'").Scan(&dbId, &dbCollation)
 					}),
 					resource.ComposeAggregateTestCheckFunc(
@@ -74,10 +74,10 @@ resource "mssql_database" %[1]q {
 				Config:       newDatabaseResourceWithCollation("imported_db", "renamed_db_with_collation", "SQL_Latin1_General_CP1250_CI_AS"),
 				ImportState:  true,
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
-					db := openDBConnection("master")
-					defer db.Close()
+					master := testCtx.GetMasterDBConnection()
+					
 					var id string
-					err := db.QueryRow("SELECT database_id FROM sys.databases WHERE [name] = @p1", "renamed_db_with_collation").Scan(&id)
+					err := master.QueryRow("SELECT database_id FROM sys.databases WHERE [name] = @p1", "renamed_db_with_collation").Scan(&id)
 					return id, err
 				},
 				ImportStateVerify: true,

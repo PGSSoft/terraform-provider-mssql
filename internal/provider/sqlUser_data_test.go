@@ -12,19 +12,15 @@ import (
 
 func TestSqlUserData(t *testing.T) {
 	var resourceId, userId, loginId string
-	dbId := fmt.Sprint(defaultDbId)
+	dbId := fmt.Sprint(testCtx.DefaultDBId)
 
 	newDataResource := func(resourceName string, userName string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[1]q {
-	name = %[2]q
-}
-
 data "mssql_sql_user" %[1]q {
 	name = %[3]q
-	database_id = data.mssql_database.%[1]s.id
+	database_id = %[2]d
 }
-`, resourceName, defaultDbName, userName)
+`, resourceName, testCtx.DefaultDBId, userName)
 	}
 
 	dataChecks := func(resName string) resource.TestCheckFunc {
@@ -36,11 +32,11 @@ data "mssql_sql_user" %[1]q {
 		)
 	}
 
-	defer execMasterDB(t, "DROP LOGIN [test_login_sql_user_data]")
-	defer execDefaultDB(t, "DROP USER [test_user]")
+	defer testCtx.ExecMasterDB(t, "DROP LOGIN [test_login_sql_user_data]")
+	defer testCtx.ExecDefaultDB(t, "DROP USER [test_user]")
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      newDataResource("not_exists", "not_exists"),
@@ -48,23 +44,21 @@ data "mssql_sql_user" %[1]q {
 			},
 			{
 				PreConfig: func() {
-					withMasterDBConnection(func(conn *sql.DB) {
-						err := conn.QueryRow(`
+					master := testCtx.GetMasterDBConnection()
+					err := master.QueryRow(`
 CREATE LOGIN [test_login_sql_user_data] WITH PASSWORD='ComplictedPa$$w0rd13';
 SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_login_sql_user_data'
 `).Scan(&loginId)
 
-						require.NoError(t, err, "creating login")
-					})
+					require.NoError(t, err, "creating login")
 
-					withDefaultDBConnection(func(conn *sql.DB) {
-						err := conn.QueryRow(`
+					defaultDB := testCtx.GetDefaultDBConnection()
+					err = defaultDB.QueryRow(`
 CREATE USER [test_user] FOR LOGIN [test_login_sql_user_data];
 SELECT DATABASE_PRINCIPAL_ID('test_user')
 `).Scan(&userId)
 
-						require.NoError(t, err, "creating user")
-					})
+					require.NoError(t, err, "creating user")
 
 					resourceId = fmt.Sprintf("%s/%s", dbId, userId)
 				},
@@ -78,11 +72,11 @@ data "mssql_sql_user" "master" {
 }
 `,
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						return db.QueryRow("SELECT principal_id, CONVERT(VARCHAR(85), [sid], 1) from sys.database_principals WHERE [name]='dbo'").
 							Scan(&userId, &loginId)
 					}),
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						err := db.QueryRow("SELECT database_id FROM sys.databases WHERE [name]='master'").Scan(&dbId)
 						resourceId = fmt.Sprintf("%s/%s", dbId, userId)
 						return err

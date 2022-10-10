@@ -3,6 +3,7 @@ package provider
 import (
 	"database/sql"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/provider/acctest"
 	"testing"
 
 	sql2 "github.com/PGSSoft/terraform-provider-mssql/internal/sql"
@@ -23,10 +24,10 @@ resource "mssql_sql_login" %[1]q {
 `, resourceName, name, password)
 	}
 
-	var newResource = func(resourceName string, settings sql2.SqlLoginSettings, defaultDbName string) string {
+	var newResource = func(resourceName string, settings sql2.SqlLoginSettings, dbId int) string {
 		loginAttributes := fmt.Sprintf(`
 	must_change_password = %[1]v
-	default_database_id = data.mssql_database.default.id
+	default_database_id = %[5]d
 	default_language = %[2]q
 	check_password_expiration = %[3]v
 	check_password_policy = %[4]v
@@ -34,39 +35,35 @@ resource "mssql_sql_login" %[1]q {
 			settings.MustChangePassword,
 			settings.DefaultLanguage,
 			settings.CheckPasswordExpiration,
-			settings.CheckPasswordPolicy)
+			settings.CheckPasswordPolicy,
+			dbId)
 
-		if isAzureTest {
+		if testCtx.IsAzureTest {
 			loginAttributes = ""
 		}
 
 		return fmt.Sprintf(`
-data "mssql_database" "default" {
-	name = %[4]q
-}
-
 resource "mssql_sql_login" %[1]q {
 	name = %[2]q
 	password = %[3]q
-	%[5]s
+	%[4]s
 }
 `,
 			resourceName,
 			settings.Name,
 			settings.Password,
-			defaultDbName,
 			loginAttributes)
 	}
 
 	var loginId, defaultLang, loginDefaultDbId string
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: newResourceDefaults("test_login", "login1", "Test_password123$"),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1), DB_ID(default_database_name), default_language_name 
 													FROM sys.sql_logins 
 													WHERE [name] = 'login1'`).
@@ -76,8 +73,8 @@ resource "mssql_sql_login" %[1]q {
 						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login", "id", &loginId),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login", "name", "login1"),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login", "password", "Test_password123$"),
-						sqlCheck("master", func(db *sql.DB) error {
-							if isAzureTest {
+						testCtx.SqlCheckMaster(func(db *sql.DB) error {
+							if testCtx.IsAzureTest {
 								return nil
 							}
 
@@ -106,9 +103,9 @@ resource "mssql_sql_login" %[1]q {
 					CheckPasswordExpiration: false,
 					DefaultLanguage:         "polish",
 					MustChangePassword:      false,
-				}, defaultDbName),
+				}, testCtx.DefaultDBId),
 				Check: resource.ComposeTestCheckFunc(
-					sqlCheck("master", func(db *sql.DB) error {
+					testCtx.SqlCheckMaster(func(db *sql.DB) error {
 						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1) 
 													FROM sys.sql_logins 
 													WHERE [name] = 'login2'`).
@@ -119,7 +116,7 @@ resource "mssql_sql_login" %[1]q {
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "name", "login2"),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "password", "Str0ngPa$$w0rd124"),
 						func(state *terraform.State) error {
-							if isAzureTest {
+							if testCtx.IsAzureTest {
 								return nil
 							}
 
@@ -127,9 +124,9 @@ resource "mssql_sql_login" %[1]q {
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "must_change_password", "false"),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_expiration", "false"),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_policy", "false"),
-								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(defaultDbId)),
+								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(testCtx.DefaultDBId)),
 								resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_language", "polish"),
-								sqlCheck("master", func(db *sql.DB) error {
+								testCtx.SqlCheckMaster(func(db *sql.DB) error {
 									var mustChangePassword, checkPasswordExpiration, checkPasswordPolicy bool
 									var defaultDb string
 									err := db.QueryRow(`	SELECT LOGINPROPERTY([name], 'IsMustChange'), is_expiration_checked, is_policy_checked, default_database_name, default_language_name
@@ -142,7 +139,7 @@ resource "mssql_sql_login" %[1]q {
 									assert.False(t, mustChangePassword, "must_change_password")
 									assert.False(t, checkPasswordExpiration, "check_password_expiration")
 									assert.False(t, checkPasswordPolicy, "check_password_policy")
-									assert.Equal(t, defaultDbName, defaultDb, "default_database_id")
+									assert.Equal(t, acctest.DefaultDbName, defaultDb, "default_database_id")
 									assert.Equal(t, "polish", defaultLang)
 
 									return err
@@ -159,13 +156,13 @@ resource "mssql_sql_login" %[1]q {
 					CheckPasswordExpiration: true,
 					DefaultLanguage:         "english",
 					MustChangePassword:      true,
-				}, defaultDbName),
+				}, testCtx.DefaultDBId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "id", &loginId),
 					resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "name", "login3"),
 					resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "password", "Test_password1234$"),
 					func(state *terraform.State) error {
-						if isAzureTest {
+						if testCtx.IsAzureTest {
 							return nil
 						}
 
@@ -173,9 +170,9 @@ resource "mssql_sql_login" %[1]q {
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "must_change_password", "true"),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_expiration", "true"),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "check_password_policy", "true"),
-							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(defaultDbId)),
+							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_database_id", fmt.Sprint(testCtx.DefaultDBId)),
 							resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "default_language", "english"),
-							sqlCheck("master", func(db *sql.DB) error {
+							testCtx.SqlCheckMaster(func(db *sql.DB) error {
 								var mustChangePassword, checkPasswordExpiration, checkPasswordPolicy bool
 								var defaultDb, name string
 
@@ -190,7 +187,7 @@ resource "mssql_sql_login" %[1]q {
 								assert.True(t, mustChangePassword, "must_change_password")
 								assert.True(t, checkPasswordExpiration, "check_password_expiration")
 								assert.True(t, checkPasswordPolicy, "check_password_policy")
-								assert.Equal(t, defaultDbName, defaultDb, "default_database_id")
+								assert.Equal(t, acctest.DefaultDbName, defaultDb, "default_database_id")
 								assert.Equal(t, "english", defaultLang, "default_language")
 
 								return err

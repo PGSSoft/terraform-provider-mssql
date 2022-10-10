@@ -17,37 +17,33 @@ func TestDatabaseRoleMemberResource(t *testing.T) {
 
 	newResource := func(resourceName string, roleName string, memberName string) string {
 		return fmt.Sprintf(`
-data "mssql_database" %[3]q {
-	name = %[4]q
-}
-
 resource "mssql_database_role" %[3]q {
 	name = %[3]q
-	database_id = data.mssql_database.%[3]s.id
+	database_id = %[4]d
 }
 
 resource "mssql_database_role" %[1]q {
 	name = %[2]q
-	database_id = data.mssql_database.%[3]s.id
+	database_id = %[4]d
 }
 
 resource "mssql_database_role_member" %[1]q {
 	role_id = mssql_database_role.%[1]s.id
 	member_id = mssql_database_role.%[3]s.id
 }
-`, resourceName, roleName, memberName, defaultDbName)
+`, resourceName, roleName, memberName, testCtx.DefaultDBId)
 	}
 
 	checkMembership := func(roleName string, memberName string) resource.TestCheckFunc {
 		return resource.ComposeTestCheckFunc(
-			sqlCheck(defaultDbName, func(db *sql.DB) error {
+			testCtx.SqlCheckDefaultDB(func(db *sql.DB) error {
 				err := db.QueryRow("SELECT DATABASE_PRINCIPAL_ID(@p1), DATABASE_PRINCIPAL_ID(@p2)", roleName, memberName).
 					Scan(&roleId, &memberId)
 				if err != nil {
 					return err
 				}
 
-				resourceId = fmt.Sprintf("%d/%d/%d", defaultDbId, roleId, memberId)
+				resourceId = fmt.Sprintf("%d/%d/%d", testCtx.DefaultDBId, roleId, memberId)
 
 				return db.QueryRow("SELECT 1 FROM sys.database_role_members WHERE role_principal_id = @p1 AND member_principal_id = @p2", roleId, memberId).Err()
 			}),
@@ -56,7 +52,7 @@ resource "mssql_database_role_member" %[1]q {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: newProviderFactories(),
+		ProtoV6ProviderFactories: testCtx.NewProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: newResource("new_resource", "test_role", "test_member"),
@@ -75,8 +71,8 @@ resource "mssql_database_role_member" %[1]q {
 				ImportStateCheck: func(states []*terraform.InstanceState) error {
 					for _, state := range states {
 						if state.ID == resourceId {
-							assert.Equal(t, fmt.Sprintf("%d/%d", defaultDbId, memberId), state.Attributes["member_id"])
-							assert.Equal(t, fmt.Sprintf("%d/%d", defaultDbId, roleId), state.Attributes["role_id"])
+							assert.Equal(t, fmt.Sprintf("%d/%d", testCtx.DefaultDBId, memberId), state.Attributes["member_id"])
+							assert.Equal(t, fmt.Sprintf("%d/%d", testCtx.DefaultDBId, roleId), state.Attributes["role_id"])
 						}
 					}
 
@@ -85,24 +81,20 @@ resource "mssql_database_role_member" %[1]q {
 			},
 			{
 				Config: fmt.Sprintf(`
-data "mssql_database" "invalid" {
-	name = %[1]q
-}
-
 data "mssql_database_role" "public" {
 	name = "db_owner"
 }
 
 resource "mssql_database_role" "invalid_membership" {
 	name = "invalid_membership"
-	database_id = data.mssql_database.invalid.id
+	database_id = %[1]d
 }
 
 resource "mssql_database_role_member" "invalid" {
 	member_id = mssql_database_role.invalid_membership.id
 	role_id = data.mssql_database_role.public.id
 }
-`, defaultDbName),
+`, testCtx.DefaultDBId),
 				ExpectError: regexp.MustCompile("same database"),
 			},
 		},
