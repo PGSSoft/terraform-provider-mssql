@@ -24,7 +24,7 @@ resource "docker_container" "mssql" {
 }
 
 resource "time_sleep" "mssql_start" {
-  create_duration = "3s"
+  create_duration = "5s"
 
   triggers = {
     container = docker_container.mssql.id
