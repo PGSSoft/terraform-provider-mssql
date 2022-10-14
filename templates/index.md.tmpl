@@ -38,4 +38,9 @@ When `azure_auth` value is set to empty object (`{}`) and following environment 
 Example:
 {{tffile "examples/provider/aad_default.tf"}}
 
+## Computed connection provider configuration
+Provider can be used, with certain limitations, with computed provider configuration. For example, provider's `hostname` can be sourced from `azurerm_mssql_server.fully_qualified_domain_name`. As shown in this [Azure SQL example](https://github.com/PGSSoft/terraform-provider-mssql/tree/main/examples/provider/azure_sql.tf)
+
+~> **Warning** When connection details are computed and not known during plan execution (e.g. SQL Server resource returning FQDN is planned to be recreated), the state cannot contain any previously created `mssql_*` resources. In such case error will be reported, as the provider does not have enough information to generate correct plan.
+
 {{ .SchemaMarkdown | trimspace }}
