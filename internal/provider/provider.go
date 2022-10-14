@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/core"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -39,27 +41,39 @@ func (p *mssqlProvider) Metadata(_ context.Context, _ provider.MetadataRequest, 
 	resp.Version = p.Version
 }
 
-func (p *mssqlProvider) Configure(ctx context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
-	if p.Version != VersionTest {
-		var data providerData
-		diags := request.Config.Get(ctx, &data)
+func (p *mssqlProvider) Configure(_ context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
+	resCtx := core.ResourceContext{}
 
-		if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
-			return
+	if p.Version == VersionTest {
+		resCtx.ConnFactory = func(ctx context.Context) sql.Connection {
+			return p.Db
+		}
+	} else {
+		resCtx.ConnFactory = func(ctx context.Context) sql.Connection {
+			var data providerData
+
+			d := request.Config.Get(ctx, &data)
+
+			if utils.AppendDiagnostics(ctx, d...); utils.HasError(ctx) {
+				return nil
+			}
+
+			connDetails, d := data.asConnectionDetails(ctx)
+
+			if utils.AppendDiagnostics(ctx, d...); utils.HasError(ctx) {
+				return nil
+			}
+
+			conn, d := connDetails.Open(ctx)
+			utils.AppendDiagnostics(ctx, d...)
+
+			return conn
 		}
 
-		connDetails, diags := data.asConnectionDetails(ctx)
-
-		if response.Diagnostics.Append(diags...); response.Diagnostics.HasError() {
-			return
-		}
-
-		p.Db, diags = connDetails.Open(ctx)
-		response.Diagnostics.Append(diags...)
 	}
 
-	response.DataSourceData = p.Db
-	response.ResourceData = p.Db
+	response.DataSourceData = resCtx
+	response.ResourceData = resCtx
 }
 
 func (p *mssqlProvider) Resources(context.Context) []func() resource.Resource {

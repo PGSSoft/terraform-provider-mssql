@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/core"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -23,8 +23,8 @@ func NewResource[T any](r Resource[T]) func() resource.ResourceWithConfigure {
 }
 
 type resourceWrapper[T any] struct {
-	r    Resource[T]
-	conn sql.Connection
+	r   Resource[T]
+	ctx core.ResourceContext
 }
 
 func (r *resourceWrapper[T]) Metadata(_ context.Context, request resource.MetadataRequest, response *resource.MetadataResponse) {
@@ -36,16 +36,16 @@ func (r *resourceWrapper[T]) Configure(ctx context.Context, request resource.Con
 		return
 	}
 
-	db, ok := request.ProviderData.(sql.Connection)
+	resourceCtx, ok := request.ProviderData.(core.ResourceContext)
 
 	if !ok {
 		response.Diagnostics.AddError(
 			"Unexpected data source configure type",
-			fmt.Sprintf("Expected sql.Connection, got: %T. Please report this issue to the provider developers.", request.ProviderData))
+			fmt.Sprintf("Expected ResourceContext, got: %T. Please report this issue to the provider developers.", request.ProviderData))
 		return
 	}
 
-	r.conn = db
+	r.ctx = resourceCtx
 }
 
 func (r *resourceWrapper[T]) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
@@ -57,8 +57,9 @@ func (r *resourceWrapper[T]) Create(ctx context.Context, request resource.Create
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	req := CreateRequest[T]{}
-	req.Conn = r.conn
-	req.monad = utils.StopOnError(ctx).Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) })
+	req.monad = utils.StopOnError(ctx).
+		Then(func() { req.Conn = r.ctx.ConnFactory(ctx) }).
+		Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) })
 
 	resp := CreateResponse[T]{}
 	r.r.Create(ctx, req, &resp)
@@ -70,8 +71,9 @@ func (r *resourceWrapper[T]) Read(ctx context.Context, request resource.ReadRequ
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	req := ReadRequest[T]{}
-	req.Conn = r.conn
-	req.monad = utils.StopOnError(ctx).Then(func() { req.State = utils.GetData[T](ctx, request.State) })
+	req.monad = utils.StopOnError(ctx).
+		Then(func() { req.Conn = r.ctx.ConnFactory(ctx) }).
+		Then(func() { req.State = utils.GetData[T](ctx, request.State) })
 
 	resp := ReadResponse[T]{}
 	r.r.Read(ctx, req, &resp)
@@ -89,8 +91,8 @@ func (r *resourceWrapper[T]) Update(ctx context.Context, request resource.Update
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	req := UpdateRequest[T]{}
-	req.Conn = r.conn
 	req.monad = utils.StopOnError(ctx).
+		Then(func() { req.Conn = r.ctx.ConnFactory(ctx) }).
 		Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) }).
 		Then(func() { req.State = utils.GetData[T](ctx, request.State) })
 
@@ -104,8 +106,9 @@ func (r *resourceWrapper[T]) Delete(ctx context.Context, request resource.Delete
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
 
 	req := DeleteRequest[T]{}
-	req.Conn = r.conn
-	req.monad = utils.StopOnError(ctx).Then(func() { req.State = utils.GetData[T](ctx, request.State) })
+	req.monad = utils.StopOnError(ctx).
+		Then(func() { req.Conn = r.ctx.ConnFactory(ctx) }).
+		Then(func() { req.State = utils.GetData[T](ctx, request.State) })
 
 	resp := DeleteResponse[T]{}
 	r.r.Delete(ctx, req, &resp)
