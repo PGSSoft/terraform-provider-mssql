@@ -165,6 +165,10 @@ func (p *mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 }
 
 func (p *mssqlProvider) ValidateConfig(ctx context.Context, request provider.ValidateConfigRequest, response *provider.ValidateConfigResponse) {
+	if p.Version == VersionTest {
+		return
+	}
+
 	var data providerData
 
 	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
