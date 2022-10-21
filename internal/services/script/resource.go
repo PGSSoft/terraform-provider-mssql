@@ -32,7 +32,7 @@ func (r *res) GetSchema(context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
 		MarkdownDescription: `Allows execution of arbitrary SQL scripts to check state and apply desired state. 
 
--> **Note** This resource is meant to be an escape hatch for all cases not supported by the provider's resources. Whenever possible, use dedicated resources, which provider better plan, validation and error reporting.  
+-> **Note** This resource is meant to be an escape hatch for all cases not supported by the provider's resources. Whenever possible, use dedicated resources, which offer better plan, validation and error reporting.  
 `,
 		Attributes: map[string]tfsdk.Attribute{
 			"id": common.ToResourceId(tfsdk.Attribute{
