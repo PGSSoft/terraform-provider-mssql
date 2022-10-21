@@ -11,11 +11,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/pkg/errors"
 )
 
 // To ensure provider fully satisfies framework interfaces
 var (
-	_ provider.ProviderWithMetadata = &mssqlProvider{}
+	_ provider.ProviderWithMetadata       = &mssqlProvider{}
+	_ provider.ProviderWithValidateConfig = &mssqlProvider{}
 )
 
 const (
@@ -160,4 +162,18 @@ func (p *mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnosti
 			},
 		},
 	}, nil
+}
+
+func (p *mssqlProvider) ValidateConfig(ctx context.Context, request provider.ValidateConfigRequest, response *provider.ValidateConfigResponse) {
+	var data providerData
+
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	utils.StopOnError(ctx).
+		Then(func() { data = utils.GetData[providerData](ctx, request.Config) }).
+		Then(func() {
+			if data.AzureAuth.IsNull() && data.SqlAuth.IsNull() {
+				utils.AddError(ctx, "Missing SQL authentication config", errors.New("One of authentication methods must be provided: sql_auth, azure_auth"))
+			}
+		})
 }
