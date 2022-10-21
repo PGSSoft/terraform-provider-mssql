@@ -23,6 +23,8 @@ type Database interface {
 	Rename(_ context.Context, name string)
 	SetCollation(_ context.Context, collation string)
 	Drop(context.Context)
+	Query(ctx context.Context, query string) []map[string]string
+	Exec(ctx context.Context, script string)
 	connect(context.Context) *sql.DB
 }
 
@@ -85,15 +87,15 @@ func GetDatabases(ctx context.Context, conn Connection) map[DatabaseId]Database 
 	return result
 }
 
-func (db database) GetConnection(context.Context) Connection {
+func (db *database) GetConnection(context.Context) Connection {
 	return db.conn
 }
 
-func (db database) GetId(context.Context) DatabaseId {
+func (db *database) GetId(context.Context) DatabaseId {
 	return db.id
 }
 
-func (db database) Exists(ctx context.Context) bool {
+func (db *database) Exists(ctx context.Context) bool {
 	switch _, err := db.getSettingsRaw(ctx); err {
 	case sql.ErrNoRows:
 		return false
@@ -105,7 +107,7 @@ func (db database) Exists(ctx context.Context) bool {
 	}
 }
 
-func (db database) GetSettings(ctx context.Context) DatabaseSettings {
+func (db *database) GetSettings(ctx context.Context) DatabaseSettings {
 	settings, err := db.getSettingsRaw(ctx)
 
 	if err != nil {
@@ -120,17 +122,63 @@ func (db *database) Rename(ctx context.Context, name string) {
 	db.conn.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] MODIFY NAME = %s", settings.Name, name))
 }
 
-func (db database) SetCollation(ctx context.Context, collation string) {
+func (db *database) SetCollation(ctx context.Context, collation string) {
 	settings := db.GetSettings(ctx)
 	db.conn.exec(ctx, fmt.Sprintf("ALTER DATABASE [%s] COLLATE %s", settings.Name, collation))
 }
 
-func (db database) Drop(ctx context.Context) {
+func (db *database) Drop(ctx context.Context) {
 	settings := db.GetSettings(ctx)
 	db.conn.exec(ctx, fmt.Sprintf("DROP DATABASE [%s]", settings.Name))
 }
 
-func (db database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
+func (db *database) Query(ctx context.Context, script string) []map[string]string {
+	rows, err := db.connect(ctx).QueryContext(ctx, script)
+
+	if err != nil {
+		utils.AddError(ctx, "Failed to execute get state script", err)
+		return nil
+	}
+
+	cols, err := rows.Columns()
+	if err != nil {
+		utils.AddError(ctx, "Failed to retrieve names of columns in the script result", err)
+		return nil
+	}
+
+	values := make([]sql.NullString, len(cols))
+	valuePtrs := make([]any, len(cols))
+	for i, _ := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	var res []map[string]string
+	for rows.Next() {
+		if err = rows.Scan(valuePtrs...); err != nil {
+			utils.AddError(ctx, "Failed to fetch values of the script result", err)
+			return nil
+		}
+
+		row := map[string]string{}
+		for i, name := range cols {
+			if values[i].Valid {
+				row[name] = values[i].String
+			}
+		}
+
+		res = append(res, row)
+	}
+
+	return res
+}
+
+func (db *database) Exec(ctx context.Context, script string) {
+	if _, err := db.connect(ctx).ExecContext(ctx, script); err != nil {
+		utils.AddError(ctx, "Failed to execute SQL script", err)
+	}
+}
+
+func (db *database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
 	var settings DatabaseSettings
 	err := db.conn.getSqlConnection(ctx).
 		QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
@@ -138,7 +186,7 @@ func (db database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error)
 	return settings, err
 }
 
-func (db database) connect(ctx context.Context) *sql.DB {
+func (db *database) connect(ctx context.Context) *sql.DB {
 	settings := db.GetSettings(ctx)
 	if utils.HasError(ctx) {
 		return nil

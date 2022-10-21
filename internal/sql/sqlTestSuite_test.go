@@ -2,7 +2,6 @@ package sql
 
 import (
 	"context"
-	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -17,20 +16,13 @@ var (
 	_ suite.AfterTest      = &SqlTestSuite{}
 )
 
-type SQLEdition string
-
-const (
-	EDITION_AZURE_SQL  SQLEdition = "SQL Azure"
-	EDITION_ENTERPRISE SQLEdition = "Enterprise Edition"
-)
-
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
 type SqlTestSuite struct {
 	suite.Suite
-	conn        *connection
+	connMock    *connectionMock
 	dbMock      dbMock
 	mock        sqlmock.Sqlmock
 	diags       *diag.Diagnostics
@@ -42,10 +34,10 @@ func (s *SqlTestSuite) SetupTest() {
 	db, sMock, err := sqlmock.New()
 	s.Require().NoError(err, "SQL mock")
 	s.mock = sMock
-	s.conn = &connection{conn: db, connDetails: ConnectionDetails{Auth: ConnectionAuthSql{}}}
+	s.connMock = &connectionMock{db: db}
 	s.dbMock = dbMock{}
 	s.dbMock.On("connect", mock.Anything).Return(db)
-	s.dbMock.On("GetConnection", mock.Anything).Return(s.conn)
+	s.dbMock.On("GetConnection", mock.Anything).Return(s.connMock)
 	s.diags = &diag.Diagnostics{}
 	s.ctx = utils.WithDiagnostics(context.Background(), s.diags)
 }
@@ -85,52 +77,5 @@ func (s *SqlTestSuite) expectUserNameQuery(id int, name string) {
 }
 
 func (s *SqlTestSuite) expectEditionQuery(edition SQLEdition) {
-	expectExactQuery(s.mock, "SELECT SERVERPROPERTY('edition')").
-		WillReturnRows(newRows("edition").AddRow(edition))
-}
-
-var _ Database = &dbMock{}
-
-type dbMock struct {
-	mock.Mock
-}
-
-func (m *dbMock) GetConnection(ctx context.Context) Connection {
-	return m.Called(ctx).Get(0).(Connection)
-}
-
-func (m *dbMock) GetId(ctx context.Context) DatabaseId {
-	return m.Called(ctx).Get(0).(DatabaseId)
-}
-
-func (m *dbMock) Exists(ctx context.Context) bool {
-	return m.Called(ctx).Bool(0)
-}
-
-func (m *dbMock) GetSettings(ctx context.Context) DatabaseSettings {
-	return m.Called(ctx).Get(0).(DatabaseSettings)
-}
-
-func (m *dbMock) Rename(ctx context.Context, name string) {
-	m.Called(ctx, name)
-}
-
-func (m *dbMock) SetCollation(ctx context.Context, collation string) {
-	m.Called(ctx, collation)
-}
-
-func (m *dbMock) Drop(ctx context.Context) {
-	m.Called(ctx)
-}
-
-func (m *dbMock) CreateUser(ctx context.Context, settings UserSettings) User {
-	return m.Called(ctx, settings).Get(0).(User)
-}
-
-func (m *dbMock) GetUser(ctx context.Context, id UserId) User {
-	return m.Called(ctx, id).Get(0).(User)
-}
-
-func (m dbMock) connect(ctx context.Context) *sql.DB {
-	return m.Called(ctx).Get(0).(*sql.DB)
+	s.connMock.edition = edition
 }

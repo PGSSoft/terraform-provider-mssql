@@ -21,13 +21,13 @@ type DatabaseTestSuite struct {
 
 func (s *DatabaseTestSuite) SetupTest() {
 	s.SqlTestSuite.SetupTest()
-	s.db = database{conn: s.conn, id: DatabaseId(rand.Int())}
+	s.db = database{conn: s.connMock, id: DatabaseId(rand.Int())}
 }
 
 func (s *DatabaseTestSuite) TestGetDatabaseByName() {
 	s.expectDatabaseIdQuery().WillReturnRows(newRows("ID").AddRow(21365))
 
-	db := GetDatabaseByName(s.ctx, s.conn, "test_db")
+	db := GetDatabaseByName(s.ctx, s.connMock, "test_db")
 
 	s.Equal(DatabaseId(21365), db.GetId(s.ctx), "DB ID")
 }
@@ -40,7 +40,7 @@ func (s *DatabaseTestSuite) TestGetMultipleDatabases() {
 	}
 	s.expectDatabasesQuery().WillReturnRows(rows)
 
-	dbs := GetDatabases(s.ctx, s.conn)
+	dbs := GetDatabases(s.ctx, s.connMock)
 
 	s.Equal(2, len(dbs), "DBs count")
 
@@ -54,14 +54,14 @@ func (s *DatabaseTestSuite) TestGetMultipleDatabases() {
 func (s *DatabaseTestSuite) TestGetDatabasesNoRows() {
 	s.expectDatabasesQuery().WillReturnError(sql.ErrNoRows)
 
-	s.Equal(0, len(GetDatabases(s.ctx, s.conn)), "Expected empty DB slice")
+	s.Equal(0, len(GetDatabases(s.ctx, s.connMock)), "Expected empty DB slice")
 }
 
 func (s *DatabaseTestSuite) TestGetDatabasesError() {
 	err := errors.New("test_error")
 	s.expectDatabasesQuery().WillReturnError(err)
 
-	GetDatabases(s.ctx, s.conn)
+	GetDatabases(s.ctx, s.connMock)
 
 	s.verifyError(err)
 }
@@ -93,7 +93,7 @@ func (s *DatabaseTestSuite) TestCreteDatabaseNoCollation() {
 	expectExactExec(s.mock, "CREATE DATABASE [%s]", settings.Name).WillReturnResult(sqlmock.NewResult(0, 1))
 	s.expectDatabaseIdQuery().WithArgs(settings.Name).WillReturnRows(newRows("ID").AddRow(dbId))
 
-	db := CreateDatabase(s.ctx, s.conn, settings)
+	db := CreateDatabase(s.ctx, s.connMock, settings)
 
 	s.Equal(dbId, db.GetId(s.ctx), "DB ID")
 }
@@ -105,7 +105,7 @@ func (s *DatabaseTestSuite) TestCreteDatabaseWithCollation() {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	s.expectDatabaseIdQuery().WithArgs(settings.Name).WillReturnRows(newRows("ID").AddRow(dbId))
 
-	db := CreateDatabase(s.ctx, s.conn, settings)
+	db := CreateDatabase(s.ctx, s.connMock, settings)
 
 	s.Equal(dbId, db.GetId(s.ctx), "DB ID")
 }
@@ -154,6 +154,21 @@ func (s *DatabaseTestSuite) TestDrop() {
 	expectExactExec(s.mock, "DROP DATABASE [%s]", dbName).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	s.db.Drop(s.ctx)
+}
+
+func (s *DatabaseTestSuite) TestQuery() {
+	const dbName = "test_db_name"
+	s.expectDatabaseSettingQuery().WithArgs(s.db.id).WillReturnRows(newRows("name", "collation_name").AddRow(dbName, ""))
+	rows := newRows("col_x", "col_y").AddRow(1, "test").AddRow("bar", true)
+	expectExactQuery(s.mock, "TEST QUERY").WillReturnRows(rows)
+
+	res := s.db.Query(s.ctx, "TEST QUERY")
+
+	s.Require().Len(res, 2, "rows count")
+	s.Assert().Equal("1", res[0]["col_x"])
+	s.Assert().Equal("test", res[0]["col_y"])
+	s.Assert().Equal("bar", res[1]["col_x"])
+	s.Assert().Equal("true", res[1]["col_y"])
 }
 
 func (s *DatabaseTestSuite) expectDatabasesQuery() *sqlmock.ExpectedQuery {

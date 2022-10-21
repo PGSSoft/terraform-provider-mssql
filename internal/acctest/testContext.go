@@ -259,6 +259,10 @@ func (t *TestContext) tryGetDBId(dbName string) (int, error) {
 }
 
 func (t *TestContext) execDB(dbName string, statFmt string, args ...any) error {
+	if !t.IsAcceptanceTest {
+		return nil
+	}
+
 	stat := fmt.Sprintf(statFmt, args...)
 	_, err := t.GetDBConnection(dbName).Exec(stat)
 	return err

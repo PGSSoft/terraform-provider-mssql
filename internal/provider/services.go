@@ -7,6 +7,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/database"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/databaseRole"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/databaseRoleMember"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/script"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/sqlLogin"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/sqlUser"
 )
@@ -21,5 +22,7 @@ func Services() []core.Service {
 		databaseRoleMember.Service(),
 		sqlLogin.Service(),
 		sqlUser.Service(),
+
+		script.Service(),
 	}
 }
