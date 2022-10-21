@@ -33,7 +33,7 @@ resource "mssql_database_role" "example" {
   owner_id    = data.mssql_sql_user.owner.id
 }
 
-resource "mssql_datbase_role_member" "example" {
+resource "mssql_database_role_member" "example" {
   role_id   = mssql_database_role.example.id
   member_id = data.mssql_sql_user.member.id
 }
