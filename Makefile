@@ -3,11 +3,17 @@ SHELL := /bin/bash
 AZURE_HARNESS := ./tests/azure_test_harness
 DOCKER_HARNESS := ./tests/docker_test_harness
 
-build:
+tidy:
+	go mod tidy
+
+build: tidy
 	go build -v .
 
-test:
+test: tidy
 	go test -v ./internal/...
+
+install: tidy
+	go install
 
 accTest:
 	if [ -f local.env ]; then source ./local.env; fi && TF_ACC=1 go test -count 1 -timeout 60m -v ./internal/...
