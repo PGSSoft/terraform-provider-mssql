@@ -13,16 +13,20 @@ type ConfigureRequest struct {
 	Conn sql.Connection
 }
 
-var _ utils.ErrorMonad = ReadRequest[any]{}
+var _ utils.ErrorMonad = MonadRequest{}
 
-type ReadRequest[TData any] struct {
-	monad  utils.ErrorMonad
-	Conn   sql.Connection
-	Config TData
+type MonadRequest struct {
+	monad utils.ErrorMonad
 }
 
-func (r ReadRequest[TData]) Then(f func()) utils.ErrorMonad {
+func (r MonadRequest) Then(f func()) utils.ErrorMonad {
 	return r.monad.Then(f)
+}
+
+type ReadRequest[TData any] struct {
+	MonadRequest
+	Conn   sql.Connection
+	Config TData
 }
 
 type ReadResponse[TData any] struct {
@@ -39,4 +43,15 @@ type DataSource[TData any] interface {
 	GetName() string
 	GetSchema(ctx context.Context) tfsdk.Schema
 	Read(ctx context.Context, req ReadRequest[TData], resp *ReadResponse[TData])
+}
+
+type ValidateRequest[TData any] struct {
+	MonadRequest
+	Config TData
+}
+
+type ValidateResponse[TData any] struct{}
+
+type DataSourceWithValidation[TData any] interface {
+	Validate(ctx context.Context, req ValidateRequest[TData], resp *ValidateResponse[TData])
 }

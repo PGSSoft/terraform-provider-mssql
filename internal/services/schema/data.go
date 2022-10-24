@@ -2,11 +2,15 @@ package schema
 
 import (
 	"context"
+	"errors"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
+
+var _ datasource.DataSourceWithValidation[resourceData] = dataSource{}
 
 type dataSource struct{}
 
@@ -31,6 +35,7 @@ func (d dataSource) GetSchema(ctx context.Context) tfsdk.Schema {
 				attr := attributes["name"]
 				attr.Optional = true
 				attr.Computed = true
+				attr.MarkdownDescription += idNameRemark
 				return attr
 			}(),
 			"database_id": func() tfsdk.Attribute {
@@ -74,4 +79,10 @@ func (d dataSource) Read(ctx context.Context, req datasource.ReadRequest[resourc
 		Then(func() {
 			resp.SetState(req.Config.withSchemaData(ctx, schema))
 		})
+}
+
+func (d dataSource) Validate(ctx context.Context, req datasource.ValidateRequest[resourceData], _ *datasource.ValidateResponse[resourceData]) {
+	if !common.IsAttrSet(req.Config.Id) && !common.IsAttrSet(req.Config.Name) {
+		utils.AddError(ctx, "One of id or name must be provided", errors.New("both id and name attributes are unknown"))
+	}
 }

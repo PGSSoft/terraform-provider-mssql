@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
+var _ datasource.DataSourceWithValidateConfig = &dataSourceWrapper[any]{}
+
 func NewDataSource[T any](d DataSource[T]) func() datasource.DataSourceWithConfigure {
 	return func() datasource.DataSourceWithConfigure {
 		return &dataSourceWrapper[T]{d: d}
@@ -65,4 +67,20 @@ func (d *dataSourceWrapper[T]) Read(ctx context.Context, req datasource.ReadRequ
 			resp.State.RemoveResource(ctx)
 		}
 	})
+}
+
+func (d *dataSourceWrapper[T]) ValidateConfig(ctx context.Context, req datasource.ValidateConfigRequest, resp *datasource.ValidateConfigResponse) {
+	dsWithValidation, ok := d.d.(DataSourceWithValidation[T])
+	if !ok {
+		return
+	}
+
+	ctx = utils.WithDiagnostics(ctx, &resp.Diagnostics)
+
+	request := ValidateRequest[T]{}
+	request.monad = utils.StopOnError(ctx).
+		Then(func() { request.Config = utils.GetData[T](ctx, req.Config) })
+
+	response := ValidateResponse[T]{}
+	dsWithValidation.Validate(ctx, request, &response)
 }
