@@ -91,7 +91,10 @@ resource "mssql_schema" %[1]q {
 				Config:            newResource("imported", "with_owner", testCtx.DefaultDbId(dboId)),
 				ImportStateVerify: true,
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
-					return schemaId, nil
+					var sId int
+					err := testCtx.GetDefaultDBConnection().QueryRow("SELECT SCHEMA_ID('with_owner')").Scan(&sId)
+
+					return testCtx.DefaultDbId(sId), err
 				},
 			},
 		},
