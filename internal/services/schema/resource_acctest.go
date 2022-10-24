@@ -87,6 +87,7 @@ resource "mssql_schema" %[1]q {
 				}),
 			},
 			{
+				ResourceName:      "mssql_schema.imported",
 				Config:            newResource("imported", "with_owner", testCtx.DefaultDbId(dboId)),
 				ImportStateVerify: true,
 				ImportStateIdFunc: func(*terraform.State) (string, error) {
