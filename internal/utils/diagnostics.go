@@ -20,7 +20,9 @@ func HasError(ctx context.Context) bool {
 }
 
 func AddError(ctx context.Context, summary string, err error) {
-	GetDiagnostics(ctx).AddError(summary, err.Error())
+	if err != nil {
+		GetDiagnostics(ctx).AddError(summary, err.Error())
+	}
 }
 
 func AppendDiagnostics(ctx context.Context, diagnostics ...diag.Diagnostic) {

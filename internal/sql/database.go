@@ -26,6 +26,7 @@ type Database interface {
 	Query(ctx context.Context, query string) []map[string]string
 	Exec(ctx context.Context, script string)
 	connect(context.Context) *sql.DB
+	getUserName(ctx context.Context, id GenericDatabasePrincipalId) string
 }
 
 type database struct {
@@ -193,4 +194,28 @@ func (db *database) connect(ctx context.Context) *sql.DB {
 	}
 
 	return db.conn.getDBSqlConnection(ctx, settings.Name)
+}
+
+func (db *database) getUserName(ctx context.Context, id GenericDatabasePrincipalId) string {
+	var (
+		name string
+		conn *sql.DB
+	)
+
+	utils.StopOnError(ctx).
+		Then(func() { conn = db.connect(ctx) }).
+		Then(func() {
+			var err error
+			if id == EmptyDatabasePrincipalId {
+				err = conn.QueryRowContext(ctx, "SELECT USER_NAME()").Scan(&name)
+			} else {
+				err = conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", id).Scan(&name)
+			}
+
+			if err != nil {
+				utils.AddError(ctx, "Failed to fetch user name", err)
+			}
+		})
+
+	return name
 }

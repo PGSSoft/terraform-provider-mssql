@@ -14,12 +14,14 @@ type LoginId string
 
 type AADObjectId string
 
+type SchemaId int
+
 type DatabasePrincipalId interface {
 	UserId | DatabaseRoleId | GenericDatabasePrincipalId
 }
 
 type NumericObjectId interface {
-	DatabaseId | DatabasePrincipalId
+	DatabaseId | DatabasePrincipalId | SchemaId
 }
 
 type StringObjectId interface {
