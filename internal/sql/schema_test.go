@@ -47,6 +47,18 @@ func (s *SchemaTestSuite) TestGetSchemaByNameNotExists() {
 	s.Fail("Did not found correct error")
 }
 
+func (s *SchemaTestSuite) TestGetSchemas() {
+	expectExactQuery(s.mock, "SELECT [schema_id] FROM sys.schemas").WillReturnRows(newRows("schema_id").AddRow(1241).AddRow(543))
+
+	schemas := GetSchemas(s.ctx, &s.dbMock)
+
+	s.Require().Len(schemas, 2, "count")
+	s.Require().Contains(schemas, SchemaId(1241))
+	s.Require().Contains(schemas, SchemaId(543))
+	s.Equal(SchemaId(1241), schemas[1241].GetId(s.ctx))
+	s.Equal(SchemaId(543), schemas[543].GetId(s.ctx))
+}
+
 func (s *SchemaTestSuite) TestCreateSchemaWithDefaultOwner() {
 	s.dbMock.On("getUserName", mock.Anything, EmptyDatabasePrincipalId).Return("self")
 	expectExactExec(s.mock, "CREATE SCHEMA [test_schema] AUTHORIZATION [self]").WillReturnResult(sqlmock.NewResult(0, 1))

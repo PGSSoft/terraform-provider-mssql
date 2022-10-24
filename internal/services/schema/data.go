@@ -5,7 +5,6 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
@@ -57,7 +56,7 @@ func (d dataSource) Read(ctx context.Context, req datasource.ReadRequest[resourc
 
 	schemaId := common.ParseDbObjectId[sql.SchemaId](ctx, req.Config.Id.Value)
 
-	utils.StopOnError(ctx).
+	req.
 		Then(func() {
 			if schemaId.IsEmpty {
 				db = common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value)

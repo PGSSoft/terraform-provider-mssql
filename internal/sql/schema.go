@@ -38,6 +38,31 @@ func GetSchemaByName(ctx context.Context, db Database, name string) Schema {
 	return GetSchema(ctx, db, SchemaId(id.Int32))
 }
 
+func GetSchemas(ctx context.Context, db Database) map[SchemaId]Schema {
+	conn := db.connect(ctx)
+	schemas := map[SchemaId]Schema{}
+
+	utils.StopOnError(ctx).Then(func() {
+		res, err := conn.QueryContext(ctx, "SELECT [schema_id] FROM sys.schemas")
+
+		switch err {
+		case sql.ErrNoRows:
+			return
+		case nil:
+			for res.Next() {
+				var id SchemaId
+				rowErr := res.Scan(&id)
+				utils.AddError(ctx, "Failed to parse schemas dataset", rowErr)
+				schemas[id] = GetSchema(ctx, db, id)
+			}
+		default:
+			utils.AddError(ctx, "Failed to fetch DB schemas", err)
+		}
+	})
+
+	return schemas
+}
+
 func CreateSchema[T DatabasePrincipalId](ctx context.Context, db Database, name string, ownerId T) Schema {
 	conn := db.connect(ctx)
 	ownerName := db.getUserName(ctx, GenericDatabasePrincipalId(ownerId))
