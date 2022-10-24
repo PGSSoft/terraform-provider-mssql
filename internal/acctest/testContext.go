@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -188,6 +189,19 @@ func (t *TestContext) Run(name string, test func(testCtx *TestContext)) *TestCon
 func (t *TestContext) Test(testCase resource.TestCase) {
 	testCase.ProtoV6ProviderFactories = t.NewProviderFactories()
 	resource.Test(t.t, testCase)
+}
+
+func (t *TestContext) FormatId(idParts ...any) string {
+	str := make([]string, len(idParts))
+	for i, id := range idParts {
+		str[i] = fmt.Sprint(id)
+	}
+
+	return strings.Join(str, "/")
+}
+
+func (t *TestContext) DefaultDbId(idParts ...any) string {
+	return t.FormatId(append([]any{t.DefaultDBId}, idParts...)...)
 }
 
 func (t *TestContext) setSqlConnectionDetails() {

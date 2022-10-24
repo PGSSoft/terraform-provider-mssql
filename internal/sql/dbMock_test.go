@@ -56,6 +56,10 @@ func (m *dbMock) Exec(ctx context.Context, script string) {
 	m.Called(ctx, script)
 }
 
-func (m dbMock) connect(ctx context.Context) *sql.DB {
+func (m *dbMock) connect(ctx context.Context) *sql.DB {
 	return m.Called(ctx).Get(0).(*sql.DB)
+}
+
+func (m *dbMock) getUserName(ctx context.Context, id GenericDatabasePrincipalId) string {
+	return m.Called(ctx, id).String(0)
 }
