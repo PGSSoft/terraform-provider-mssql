@@ -39,7 +39,7 @@ func (d resourceData) withSchemaData(ctx context.Context, schema sql.Schema) res
 
 	return resourceData{
 		Id:         types.String{Value: common.DbObjectId[sql.SchemaId]{DbId: dbId, ObjectId: schema.GetId(ctx)}.String()},
-		Name:       d.Name,
+		Name:       types.String{Value: schema.GetName(ctx)},
 		DatabaseId: types.String{Value: fmt.Sprint(dbId)},
 		OwnerId:    types.String{Value: common.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: schema.GetOwnerId(ctx)}.String()},
 	}

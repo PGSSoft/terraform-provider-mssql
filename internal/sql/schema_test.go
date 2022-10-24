@@ -2,8 +2,10 @@ package sql
 
 import (
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"strings"
 	"testing"
 )
 
@@ -28,6 +30,21 @@ func (s *SchemaTestSuite) TestGetSchemaByName() {
 	sch := GetSchemaByName(s.ctx, &s.dbMock, "test_schema")
 
 	s.Equal(235, int(sch.GetId(s.ctx)), "id")
+}
+
+func (s *SchemaTestSuite) TestGetSchemaByNameNotExists() {
+	expectExactQuery(s.mock, "SELECT SCHEMA_ID(@p1)").WithArgs("not_exists").WillReturnRows(newRows("id").AddRow(nil))
+
+	GetSchemaByName(s.ctx, &s.dbMock, "not_exists")
+
+	s.errExpected = true
+	for _, d := range *s.diags {
+		if d.Severity() == diag.SeverityError && strings.Contains(d.Summary(), "not exist") {
+			return
+		}
+	}
+
+	s.Fail("Did not found correct error")
 }
 
 func (s *SchemaTestSuite) TestCreateSchemaWithDefaultOwner() {
