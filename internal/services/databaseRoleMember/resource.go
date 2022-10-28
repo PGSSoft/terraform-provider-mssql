@@ -47,8 +47,8 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 
 	req.
 		Then(func() {
-			roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.Plan.RoleId.Value)
-			memberId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.MemberId.Value)
+			roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.Plan.RoleId.ValueString())
+			memberId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.MemberId.ValueString())
 		}).
 		Then(func() {
 			if roleId.DbId != memberId.DbId {
@@ -59,7 +59,7 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, roleId.ObjectId) }).
 		Then(func() { role.AddMember(ctx, memberId.ObjectId) }).
 		Then(func() {
-			req.Plan.Id = types.String{Value: common2.DbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]{DbObjectId: roleId, MemberId: memberId.ObjectId}.String()}
+			req.Plan.Id = types.StringValue(common2.DbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId]{DbObjectId: roleId, MemberId: memberId.ObjectId}.String())
 			resp.State = req.Plan
 		})
 }
@@ -73,14 +73,14 @@ func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], 
 
 	req.
 		Then(func() {
-			id = common2.ParseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.Value)
+			id = common2.ParseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.ValueString())
 		}).
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, id.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, id.ObjectId) }).
 		Then(func() {
 			if role.HasMember(ctx, id.MemberId) {
-				req.State.RoleId = types.String{Value: id.DbObjectId.String()}
-				req.State.MemberId = types.String{Value: id.GetMemberId().String()}
+				req.State.RoleId = types.StringValue(id.DbObjectId.String())
+				req.State.MemberId = types.StringValue(id.GetMemberId().String())
 				resp.SetState(req.State)
 			}
 		})
@@ -99,7 +99,7 @@ func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceDat
 
 	req.
 		Then(func() {
-			id = common2.ParseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.Value)
+			id = common2.ParseDbObjectMemberId[sql.DatabaseRoleId, sql.GenericDatabasePrincipalId](ctx, req.State.Id.ValueString())
 		}).
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, id.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, id.ObjectId) }).

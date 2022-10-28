@@ -35,8 +35,8 @@ type resourceData struct {
 
 func (d resourceData) toSettings() sql.UserSettings {
 	return sql.UserSettings{
-		Name:    d.Name.Value,
-		LoginId: sql.LoginId(d.LoginId.Value),
+		Name:    d.Name.ValueString(),
+		LoginId: sql.LoginId(d.LoginId.ValueString()),
 		Type:    sql.USER_TYPE_SQL,
 	}
 }
@@ -45,15 +45,15 @@ func (d resourceData) withSettings(settings sql.UserSettings) resourceData {
 	return resourceData{
 		Id:         d.Id,
 		DatabaseId: d.DatabaseId,
-		Name:       types.String{Value: settings.Name},
-		LoginId:    types.String{Value: fmt.Sprint(settings.LoginId)},
+		Name:       types.StringValue(settings.Name),
+		LoginId:    types.StringValue(fmt.Sprint(settings.LoginId)),
 	}
 }
 
 func (d resourceData) withIds(dbId sql.DatabaseId, userId sql.UserId) resourceData {
 	return resourceData{
-		Id:         types.String{Value: fmt.Sprintf("%v/%v", dbId, userId)},
-		DatabaseId: types.String{Value: fmt.Sprint(dbId)},
+		Id:         types.StringValue(fmt.Sprintf("%v/%v", dbId, userId)),
+		DatabaseId: types.StringValue(fmt.Sprint(dbId)),
 		Name:       d.Name,
 		LoginId:    d.LoginId,
 	}

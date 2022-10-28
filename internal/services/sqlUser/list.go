@@ -58,11 +58,11 @@ func (l *listDataSource) Read(ctx context.Context, req datasource.ReadRequest[li
 	var dbId sql.DatabaseId
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString()) }).
 		Then(func() { dbId = db.GetId(ctx) }).
 		Then(func() {
 			state := listDataSourceData{
-				DatabaseId: types.String{Value: fmt.Sprint(dbId)},
+				DatabaseId: types.StringValue(fmt.Sprint(dbId)),
 			}
 			state.Id = state.DatabaseId
 

@@ -26,7 +26,7 @@ func (l listDataSource) GetName() string {
 	return "database_permissions"
 }
 
-func (l listDataSource) GetSchema(ctx context.Context) tfsdk.Schema {
+func (l listDataSource) GetSchema(context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
 		MarkdownDescription: "Returns all permissions granted in a DB to given principal",
 		Attributes: map[string]tfsdk.Attribute{
@@ -61,7 +61,7 @@ func (l listDataSource) Read(ctx context.Context, req datasource.ReadRequest[lis
 	var db sql.Database
 	var perms sql.DatabasePermissions
 
-	principalId := common.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Config.PrincipalId.Value)
+	principalId := common.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Config.PrincipalId.ValueString())
 
 	req.
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, principalId.DbId) }).
@@ -71,8 +71,8 @@ func (l listDataSource) Read(ctx context.Context, req datasource.ReadRequest[lis
 
 			for _, perm := range perms {
 				req.Config.Permissions = append(req.Config.Permissions, listDataSourceDataPermission{
-					Permission:      types.String{Value: perm.Name},
-					WithGrantOption: types.Bool{Value: perm.WithGrantOption},
+					Permission:      types.StringValue(perm.Name),
+					WithGrantOption: types.BoolValue(perm.WithGrantOption),
 				})
 			}
 

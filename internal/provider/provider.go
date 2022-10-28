@@ -176,7 +176,7 @@ func (p *mssqlProvider) ValidateConfig(ctx context.Context, request provider.Val
 	utils.StopOnError(ctx).
 		Then(func() { data = utils.GetData[providerData](ctx, request.Config) }).
 		Then(func() {
-			if data.AzureAuth.IsNull() && data.SqlAuth.IsNull() {
+			if data.AzureAuth == nil && data.SqlAuth == nil {
 				utils.AddError(ctx, "Missing SQL authentication config", errors.New("One of authentication methods must be provided: sql_auth, azure_auth"))
 			}
 		})

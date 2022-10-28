@@ -35,8 +35,8 @@ func (d *dataSource) Read(ctx context.Context, req datasource.ReadRequest[resour
 	var user sql.User
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value) }).
-		Then(func() { user = sql.GetUserByName(ctx, db, req.Config.Name.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString()) }).
+		Then(func() { user = sql.GetUserByName(ctx, db, req.Config.Name.ValueString()) }).
 		Then(func() {
 			state := req.Config.withIds(db.GetId(ctx), user.GetId(ctx))
 			resp.SetState(state.withSettings(user.GetSettings(ctx)))

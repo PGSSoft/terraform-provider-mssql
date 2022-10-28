@@ -38,8 +38,8 @@ type resourceData struct {
 
 func (d resourceData) toSettings() sql.UserSettings {
 	return sql.UserSettings{
-		Name:        d.Name.Value,
-		AADObjectId: sql.AADObjectId(d.UserObjectId.Value),
+		Name:        d.Name.ValueString(),
+		AADObjectId: sql.AADObjectId(d.UserObjectId.ValueString()),
 		Type:        sql.USER_TYPE_AZUREAD,
 	}
 }
@@ -50,7 +50,7 @@ func (d resourceData) withSettings(ctx context.Context, settings sql.UserSetting
 		return d
 	}
 
-	d.Name = types.String{Value: settings.Name}
-	d.UserObjectId = types.String{Value: strings.ToUpper(fmt.Sprint(settings.AADObjectId))}
+	d.Name = types.StringValue(settings.Name)
+	d.UserObjectId = types.StringValue(strings.ToUpper(fmt.Sprint(settings.AADObjectId)))
 	return d
 }

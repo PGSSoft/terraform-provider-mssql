@@ -3,6 +3,7 @@ package validators
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -30,17 +31,17 @@ func (s stringLengthValidator) Validate(ctx context.Context, request tfsdk.Valid
 		return
 	}
 
-	if str.Unknown || str.Null {
+	if !common.IsAttrSet(str) {
 		return
 	}
 
-	strLen := len(str.Value)
+	strLen := len(str.ValueString())
 
 	if strLen < s.Min || strLen > s.Max {
 		response.Diagnostics.AddAttributeError(
 			request.AttributePath,
 			"Invalid String Length",
-			fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), str.Value, strLen),
+			fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), str.ValueString(), strLen),
 		)
 	}
 }

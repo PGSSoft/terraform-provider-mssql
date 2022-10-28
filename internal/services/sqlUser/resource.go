@@ -37,7 +37,7 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 	)
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.ValueString()) }).
 		Then(func() { user = sql.CreateUser(ctx, db, req.Plan.toSettings()) }).
 		Then(func() { resp.State = req.Plan.withIds(db.GetId(ctx), user.GetId(ctx)) })
 }
@@ -71,7 +71,7 @@ func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceDat
 }
 
 func getUser(ctx context.Context, conn sql.Connection, data resourceData) sql.User {
-	idSegments := strings.Split(data.Id.Value, "/")
+	idSegments := strings.Split(data.Id.ValueString(), "/")
 	id, err := strconv.Atoi(idSegments[1])
 	if err != nil {
 		utils.AddError(ctx, "Error converting user ID", err)

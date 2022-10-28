@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
@@ -21,83 +20,62 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 		errSummary string
 	}{
 		"Hostname": {
-			pd:         providerData{Hostname: types.String{Unknown: true}},
+			pd: providerData{
+				Hostname: types.StringUnknown(),
+			},
 			errSummary: "Hostname cannot be a computed value",
 		},
 
 		"SQL Username": {
-			pd: providerData{SqlAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"username": types.StringType,
-					"password": types.StringType,
+			pd: providerData{
+				SqlAuth: &sqlAuth{
+					Username: types.StringUnknown(),
+					Password: types.StringNull(),
 				},
-				Attrs: map[string]attr.Value{
-					"username": types.String{Unknown: true},
-					"password": types.String{Null: true},
-				},
-			}},
+			},
 			errSummary: "SQL username cannot be a computed value",
 		},
 
 		"SQL Password": {
-			pd: providerData{SqlAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"username": types.StringType,
-					"password": types.StringType,
+			pd: providerData{
+				SqlAuth: &sqlAuth{
+					Username: types.StringNull(),
+					Password: types.StringUnknown(),
 				},
-				Attrs: map[string]attr.Value{
-					"username": types.String{Null: true},
-					"password": types.String{Unknown: true},
-				},
-			}},
+			},
 			errSummary: "SQL password cannot be a computed value",
 		},
 
 		"Azure auth ClientId": {
-			pd: providerData{AzureAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"client_id":     types.StringType,
-					"client_secret": types.StringType,
-					"tenant_id":     types.StringType,
+			pd: providerData{
+				AzureAuth: &azureAuth{
+					ClientId:     types.StringUnknown(),
+					ClientSecret: types.StringNull(),
+					TenantId:     types.StringNull(),
 				},
-				Attrs: map[string]attr.Value{
-					"client_id":     types.String{Unknown: true},
-					"client_secret": types.String{Null: true},
-					"tenant_id":     types.String{Null: true},
-				},
-			}},
+			},
 			errSummary: "Azure AD Service Principal client_id cannot be a computed value",
 		},
 
 		"Azure auth ClientSecret": {
-			pd: providerData{AzureAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"client_id":     types.StringType,
-					"client_secret": types.StringType,
-					"tenant_id":     types.StringType,
+			pd: providerData{
+				AzureAuth: &azureAuth{
+					ClientId:     types.StringNull(),
+					ClientSecret: types.StringUnknown(),
+					TenantId:     types.StringNull(),
 				},
-				Attrs: map[string]attr.Value{
-					"client_id":     types.String{Null: true},
-					"client_secret": types.String{Unknown: true},
-					"tenant_id":     types.String{Null: true},
-				},
-			}},
+			},
 			errSummary: "Azure AD Service Principal client_secret cannot be a computed value",
 		},
 
 		"Azure auth TenantId": {
-			pd: providerData{AzureAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"client_id":     types.StringType,
-					"client_secret": types.StringType,
-					"tenant_id":     types.StringType,
+			pd: providerData{
+				AzureAuth: &azureAuth{
+					ClientId:     types.StringNull(),
+					ClientSecret: types.StringNull(),
+					TenantId:     types.StringUnknown(),
 				},
-				Attrs: map[string]attr.Value{
-					"client_id":     types.String{Null: true},
-					"client_secret": types.String{Null: true},
-					"tenant_id":     types.String{Unknown: true},
-				},
-			}},
+			},
 			errSummary: "Azure AD Service Principal tenant_id cannot be a computed value",
 		},
 	}
@@ -124,22 +102,22 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 	}{
 		"With port": {
 			pd: providerData{
-				Hostname: types.String{Value: "test_hostname"},
-				Port:     types.Int64{Value: 123},
+				Hostname: types.StringValue("test_hostname"),
+				Port:     types.Int64Value(123),
 			},
 			host: "test_hostname:123",
 		},
 		"Without port": {
 			pd: providerData{
-				Hostname: types.String{Value: "test_hostname2"},
-				Port:     types.Int64{Null: true},
+				Hostname: types.StringValue("test_hostname2"),
+				Port:     types.Int64Null(),
 			},
 			host: "test_hostname2",
 		},
 		"Env variable hostname": {
 			pd: providerData{
-				Hostname: types.String{Null: true},
-				Port:     types.Int64{Null: true},
+				Hostname: types.StringNull(),
+				Port:     types.Int64Null(),
 			},
 			env: map[string]string{
 				"MSSQL_HOSTNAME": "env_test_hostname",
@@ -148,8 +126,8 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 		},
 		"Env variable hostname and port": {
 			pd: providerData{
-				Hostname: types.String{Null: true},
-				Port:     types.Int64{Null: true},
+				Hostname: types.StringNull(),
+				Port:     types.Int64Null(),
 			},
 			env: map[string]string{
 				"MSSQL_HOSTNAME": "env_test_hostname2",
@@ -159,8 +137,8 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 		},
 		"Env variables and attributes": {
 			pd: providerData{
-				Hostname: types.String{Value: "test_hostname"},
-				Port:     types.Int64{Value: 123},
+				Hostname: types.StringValue("test_hostname"),
+				Port:     types.Int64Value(123),
 			},
 			env: map[string]string{
 				"MSSQL_HOSTNAME": "env_test_hostname2",
@@ -190,17 +168,10 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 
 	t.Run("SQL auth", func(t *testing.T) {
 		pd := providerData{
-			SqlAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"username": types.StringType,
-					"password": types.StringType,
-				},
-				Attrs: map[string]attr.Value{
-					"username": types.String{Value: "test_username"},
-					"password": types.String{Value: "test_password"},
-				},
+			SqlAuth: &sqlAuth{
+				Username: types.StringValue("test_username"),
+				Password: types.StringValue("test_password"),
 			},
-			AzureAuth: types.Object{Null: true},
 		}
 
 		cd, _ := pd.asConnectionDetails(ctx)
@@ -213,18 +184,10 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 
 	t.Run("Azure auth", func(t *testing.T) {
 		pd := providerData{
-			SqlAuth: types.Object{Null: true},
-			AzureAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"client_id":     types.StringType,
-					"client_secret": types.StringType,
-					"tenant_id":     types.StringType,
-				},
-				Attrs: map[string]attr.Value{
-					"client_id":     types.String{Value: "test_client_id"},
-					"client_secret": types.String{Value: "test_client_secret"},
-					"tenant_id":     types.String{Value: "test_tenant_id"},
-				},
+			AzureAuth: &azureAuth{
+				ClientId:     types.StringValue("test_client_id"),
+				ClientSecret: types.StringValue("test_client_secret"),
+				TenantId:     types.StringValue("test_tenant_id"),
 			},
 		}
 
@@ -239,8 +202,7 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 
 	t.Run("Azure auth env variables", func(t *testing.T) {
 		pd := providerData{
-			SqlAuth:   types.Object{},
-			AzureAuth: types.Object{},
+			AzureAuth: &azureAuth{},
 		}
 		os.Setenv("ARM_CLIENT_ID", "env_test_client_id")
 		os.Setenv("ARM_CLIENT_SECRET", "env_test_client_secret")
@@ -257,18 +219,10 @@ func TestProviderDataAsConnectionDetails(t *testing.T) {
 
 	t.Run("Azure auth and env variables", func(t *testing.T) {
 		pd := providerData{
-			SqlAuth: types.Object{},
-			AzureAuth: types.Object{
-				AttrTypes: map[string]attr.Type{
-					"client_id":     types.StringType,
-					"client_secret": types.StringType,
-					"tenant_id":     types.StringType,
-				},
-				Attrs: map[string]attr.Value{
-					"client_id":     types.String{Value: "test_client_id"},
-					"client_secret": types.String{Value: "test_client_secret"},
-					"tenant_id":     types.String{Value: "test_tenant_id"},
-				},
+			AzureAuth: &azureAuth{
+				ClientId:     types.StringValue("test_client_id"),
+				ClientSecret: types.StringValue("test_client_secret"),
+				TenantId:     types.StringValue("test_tenant_id"),
 			},
 		}
 		os.Setenv("ARM_CLIENT_ID", "env_test_client_id")

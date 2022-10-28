@@ -51,13 +51,13 @@ func (l *listDataSource) Read(ctx context.Context, req datasource.ReadRequest[li
 		Then(func() { dbs = sql.GetDatabases(ctx, req.Conn) }).
 		Then(func() {
 			result := listDataSourceData{
-				Id:        types.String{Value: ""},
+				Id:        types.StringValue(""),
 				Databases: []resourceData{},
 			}
 
 			for id, db := range dbs {
 				r := resourceData{
-					Id: types.String{Value: fmt.Sprint(id)},
+					Id: types.StringValue(fmt.Sprint(id)),
 				}
 				result.Databases = append(result.Databases, r.withSettings(db.GetSettings(ctx)))
 			}

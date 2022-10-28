@@ -16,38 +16,38 @@ func TestIgnoreCaseModifier(t *testing.T) {
 	}{
 		"empty state": {
 			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.String{Unknown: true},
-				AttributePlan:  types.String{Value: "plannedValue"},
+				AttributeState: types.StringUnknown(),
+				AttributePlan:  types.StringValue("plannedValue"),
 			},
-			expectedValue: types.String{Value: "plannedValue"},
+			expectedValue: types.StringValue("plannedValue"),
 		},
 		"empty plan": {
 			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.String{Value: "stateValue"},
-				AttributePlan:  types.String{Null: true},
+				AttributeState: types.StringValue("stateValue"),
+				AttributePlan:  types.StringNull(),
 			},
-			expectedValue: types.String{Null: true},
+			expectedValue: types.StringNull(),
 		},
 		"non string": {
 			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.Int64{Value: 246},
-				AttributePlan:  types.Int64{Value: 45763},
+				AttributeState: types.Int64Value(246),
+				AttributePlan:  types.Int64Value(45763),
 			},
-			expectedValue: types.Int64{Value: 45763},
+			expectedValue: types.Int64Value(45763),
 		},
 		"matching case": {
 			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.String{Value: "matchingCase"},
-				AttributePlan:  types.String{Value: "matchingCase"},
+				AttributeState: types.StringValue("matchingCase"),
+				AttributePlan:  types.StringValue("matchingCase"),
 			},
-			expectedValue: types.String{Value: "matchingCase"},
+			expectedValue: types.StringValue("matchingCase"),
 		},
 		"not matching case": {
 			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.String{Value: "NotMatchingCase"},
-				AttributePlan:  types.String{Value: "NOTMATCHINGCASE"},
+				AttributeState: types.StringValue("NotMatchingCase"),
+				AttributePlan:  types.StringValue("NOTMATCHINGCASE"),
 			},
-			expectedValue: types.String{Value: "NotMatchingCase"},
+			expectedValue: types.StringValue("NotMatchingCase"),
 		},
 	}
 

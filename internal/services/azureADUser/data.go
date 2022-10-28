@@ -41,26 +41,26 @@ func (d *dataSource) Read(ctx context.Context, req datasource.ReadRequest[resour
 	)
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString()) }).
 		Then(func() {
 			if !req.Config.Name.IsNull() && !req.Config.Name.IsUnknown() {
-				user = sql.GetUserByName(ctx, db, req.Config.Name.Value)
+				user = sql.GetUserByName(ctx, db, req.Config.Name.ValueString())
 				return
 			}
 
 			for _, u := range sql.GetUsers(ctx, db) {
 				settings := u.GetSettings(ctx)
-				if settings.Type == sql.USER_TYPE_AZUREAD && strings.ToUpper(fmt.Sprint(settings.AADObjectId)) == strings.ToUpper(req.Config.UserObjectId.Value) {
+				if settings.Type == sql.USER_TYPE_AZUREAD && strings.ToUpper(fmt.Sprint(settings.AADObjectId)) == strings.ToUpper(req.Config.UserObjectId.ValueString()) {
 					user = u
 					return
 				}
 			}
 
-			utils.AddError(ctx, "User does not exist", fmt.Errorf("could not find user with name=%q and object_id=%q", req.Config.Name.Value, req.Config.UserObjectId.Value))
+			utils.AddError(ctx, "User does not exist", fmt.Errorf("could not find user with name=%q and object_id=%q", req.Config.Name.ValueString(), req.Config.UserObjectId.ValueString()))
 		}).
 		Then(func() {
 			state := req.Config.withSettings(ctx, user.GetSettings(ctx))
-			state.Id = types.String{Value: common2.DbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
+			state.Id = types.StringValue(common2.DbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String())
 			resp.SetState(state)
 		})
 }

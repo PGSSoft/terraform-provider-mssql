@@ -79,17 +79,17 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 	req.
 		Then(func() { r.queryState(ctx, req.Conn, req.Plan) }). // report error if planned read script produces and error
 		Then(func() {
-			script := req.Plan.UpdateScript.Value
+			script := req.Plan.UpdateScript.ValueString()
 
 			if common.IsAttrSet(req.Plan.CreateScript) {
-				script = req.Plan.CreateScript.Value
+				script = req.Plan.CreateScript.ValueString()
 			}
 
 			r.execScript(ctx, req.Conn, script, req.Plan)
 		}).
 		Then(func() {
 			resp.State = req.Plan
-			resp.State.Id = types.String{Value: "script"}
+			resp.State.Id = types.StringValue("script")
 		})
 }
 
@@ -100,13 +100,13 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 				r.queryState(ctx, req.Conn, req.Plan) // report error if planned read script produces and error
 			}
 		}).
-		Then(func() { r.execScript(ctx, req.Conn, req.Plan.UpdateScript.Value, req.Plan) }).
+		Then(func() { r.execScript(ctx, req.Conn, req.Plan.UpdateScript.ValueString(), req.Plan) }).
 		Then(func() { resp.State = req.Plan })
 }
 
 func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceData], _ *resource.DeleteResponse[resourceData]) {
 	if common.IsAttrSet(req.State.DeleteScript) {
-		req.Then(func() { r.execScript(ctx, req.Conn, req.State.DeleteScript.Value, req.State) })
+		req.Then(func() { r.execScript(ctx, req.Conn, req.State.DeleteScript.ValueString(), req.State) })
 	}
 }
 
@@ -114,7 +114,7 @@ func (r *res) execScript(ctx context.Context, conn sql.Connection, script string
 	var db sql.Database
 
 	utils.StopOnError(ctx).
-		Then(func() { db = common.GetResourceDb(ctx, conn, data.DatabaseId.Value) }).
+		Then(func() { db = common.GetResourceDb(ctx, conn, data.DatabaseId.ValueString()) }).
 		Then(func() { db.Exec(ctx, script) })
 }
 
@@ -127,8 +127,8 @@ func (r *res) queryState(ctx context.Context, conn sql.Connection, data resource
 	state := map[string]types.String{}
 
 	utils.StopOnError(ctx).
-		Then(func() { db = common.GetResourceDb(ctx, conn, data.DatabaseId.Value) }).
-		Then(func() { queryRes = db.Query(ctx, data.ReadScript.Value) }).
+		Then(func() { db = common.GetResourceDb(ctx, conn, data.DatabaseId.ValueString()) }).
+		Then(func() { queryRes = db.Query(ctx, data.ReadScript.ValueString()) }).
 		Then(func() {
 			if len(queryRes) != 1 {
 				utils.AddError(ctx, "Invalid read_script result", fmt.Errorf("expected 1 row, got %d", len(queryRes)))
@@ -136,7 +136,7 @@ func (r *res) queryState(ctx context.Context, conn sql.Connection, data resource
 		}).
 		Then(func() {
 			for name, val := range queryRes[0] {
-				state[name] = types.String{Value: val}
+				state[name] = types.StringValue(val)
 			}
 		})
 
