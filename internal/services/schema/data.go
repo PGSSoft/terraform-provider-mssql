@@ -59,19 +59,19 @@ func (d dataSource) Read(ctx context.Context, req datasource.ReadRequest[resourc
 		schema sql.Schema
 	)
 
-	schemaId := common.ParseDbObjectId[sql.SchemaId](ctx, req.Config.Id.Value)
+	schemaId := common.ParseDbObjectId[sql.SchemaId](ctx, req.Config.Id.ValueString())
 
 	req.
 		Then(func() {
 			if schemaId.IsEmpty {
-				db = common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value)
+				db = common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString())
 			} else {
 				db = sql.GetDatabase(ctx, req.Conn, schemaId.DbId)
 			}
 		}).
 		Then(func() {
 			if schemaId.IsEmpty {
-				schema = sql.GetSchemaByName(ctx, db, req.Config.Name.Value)
+				schema = sql.GetSchemaByName(ctx, db, req.Config.Name.ValueString())
 			} else {
 				schema = sql.GetSchema(ctx, db, schemaId.ObjectId)
 			}

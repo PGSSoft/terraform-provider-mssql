@@ -58,10 +58,10 @@ func (d resourceData) withRoleData(ctx context.Context, role sql.DatabaseRole) r
 	dbId := role.GetDb(ctx).GetId(ctx)
 
 	return resourceData{
-		Id:         types.String{Value: common2.DbObjectId[sql.DatabaseRoleId]{DbId: dbId, ObjectId: role.GetId(ctx)}.String()},
-		Name:       types.String{Value: role.GetName(ctx)},
-		DatabaseId: types.String{Value: fmt.Sprint(dbId)},
-		OwnerId:    types.String{Value: common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: role.GetOwnerId(ctx)}.String()},
+		Id:         types.StringValue(common2.DbObjectId[sql.DatabaseRoleId]{DbId: dbId, ObjectId: role.GetId(ctx)}.String()),
+		Name:       types.StringValue(role.GetName(ctx)),
+		DatabaseId: types.StringValue(fmt.Sprint(dbId)),
+		OwnerId:    types.StringValue(common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: role.GetOwnerId(ctx)}.String()),
 	}
 }
 
@@ -82,10 +82,10 @@ type dataSourceData struct {
 func (d dataSourceData) withRoleData(ctx context.Context, role sql.DatabaseRole) dataSourceData {
 	dbId := role.GetDb(ctx).GetId(ctx)
 	data := dataSourceData{
-		Id:         types.String{Value: common2.DbObjectId[sql.DatabaseRoleId]{DbId: dbId, ObjectId: role.GetId(ctx)}.String()},
-		Name:       types.String{Value: role.GetName(ctx)},
-		DatabaseId: types.String{Value: fmt.Sprint(dbId)},
-		OwnerId:    types.String{Value: common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: role.GetOwnerId(ctx)}.String()},
+		Id:         types.StringValue(common2.DbObjectId[sql.DatabaseRoleId]{DbId: dbId, ObjectId: role.GetId(ctx)}.String()),
+		Name:       types.StringValue(role.GetName(ctx)),
+		DatabaseId: types.StringValue(fmt.Sprint(dbId)),
+		OwnerId:    types.StringValue(common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: role.GetOwnerId(ctx)}.String()),
 	}
 
 	mapType := func(typ sql.DatabasePrincipalType) string {
@@ -104,9 +104,9 @@ func (d dataSourceData) withRoleData(ctx context.Context, role sql.DatabaseRole)
 
 	for id, member := range role.GetMembers(ctx) {
 		memberData := resourceRoleMembersData{
-			Id:   types.String{Value: common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: id}.String()},
-			Name: types.String{Value: member.Name},
-			Type: types.String{Value: mapType(member.Type)},
+			Id:   types.StringValue(common2.DbObjectId[sql.GenericDatabasePrincipalId]{DbId: dbId, ObjectId: id}.String()),
+			Name: types.StringValue(member.Name),
+			Type: types.StringValue(mapType(member.Type)),
 		}
 		data.Members = append(data.Members, memberData)
 	}

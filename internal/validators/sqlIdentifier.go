@@ -3,6 +3,7 @@ package validators
 import (
 	"context"
 	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -29,15 +30,15 @@ func (s sqlIdentifierValidator) Validate(ctx context.Context, request tfsdk.Vali
 		return
 	}
 
-	if str.Unknown || str.Null {
+	if !common.IsAttrSet(str) {
 		return
 	}
 
-	if match, _ := regexp.Match("^[a-zA-Z_@#][a-zA-Z\\d@$#_-]*$", []byte(str.Value)); !match {
+	if match, _ := regexp.Match("^[a-zA-Z_@#][a-zA-Z\\d@$#_-]*$", []byte(str.ValueString())); !match {
 		response.Diagnostics.AddAttributeError(
 			request.AttributePath,
 			"Invalid SQL identifier",
-			fmt.Sprintf("%s, got: %s", s.Description(ctx), str.Value),
+			fmt.Sprintf("%s, got: %s", s.Description(ctx), str.ValueString()),
 		)
 	}
 }

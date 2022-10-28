@@ -27,8 +27,8 @@ type resourceData struct {
 func (d resourceData) toSettings(ctx context.Context) sql.SqlLoginSettings {
 	var dbId int
 
-	if !d.DefaultDatabaseId.Null && !d.DefaultDatabaseId.Unknown {
-		if id, err := strconv.Atoi(d.DefaultDatabaseId.Value); err == nil {
+	if common2.IsAttrSet(d.DefaultDatabaseId) {
+		if id, err := strconv.Atoi(d.DefaultDatabaseId.ValueString()); err == nil {
 			dbId = id
 		} else {
 			utils.AddError(ctx, "Failed to parse DB id", err)
@@ -36,41 +36,41 @@ func (d resourceData) toSettings(ctx context.Context) sql.SqlLoginSettings {
 	}
 
 	return sql.SqlLoginSettings{
-		Name:                    d.Name.Value,
-		Password:                d.Password.Value,
-		MustChangePassword:      d.MustChangePassword.Value,
+		Name:                    d.Name.ValueString(),
+		Password:                d.Password.ValueString(),
+		MustChangePassword:      d.MustChangePassword.ValueBool(),
 		DefaultDatabaseId:       sql.DatabaseId(dbId),
-		DefaultLanguage:         d.DefaultLanguage.Value,
-		CheckPasswordExpiration: d.CheckPasswordExpiration.Value,
-		CheckPasswordPolicy:     d.CheckPasswordPolicy.Value || d.CheckPasswordPolicy.Null || d.CheckPasswordPolicy.Unknown,
+		DefaultLanguage:         d.DefaultLanguage.ValueString(),
+		CheckPasswordExpiration: d.CheckPasswordExpiration.ValueBool(),
+		CheckPasswordPolicy:     d.CheckPasswordPolicy.ValueBool() || d.CheckPasswordPolicy.IsNull() || d.CheckPasswordPolicy.IsUnknown(),
 	}
 }
 
 func (d resourceData) withSettings(settings sql.SqlLoginSettings, isAzure bool) resourceData {
-	d.Name = types.String{Value: settings.Name}
+	d.Name = types.StringValue(settings.Name)
 
 	if isAzure {
 		return d
 	}
 
 	if common2.IsAttrSet(d.MustChangePassword) {
-		d.MustChangePassword.Value = settings.MustChangePassword
+		d.MustChangePassword = types.BoolValue(settings.MustChangePassword)
 	}
 
 	if common2.IsAttrSet(d.DefaultDatabaseId) {
-		d.DefaultDatabaseId = types.String{Value: fmt.Sprint(settings.DefaultDatabaseId)}
+		d.DefaultDatabaseId = types.StringValue(fmt.Sprint(settings.DefaultDatabaseId))
 	}
 
 	if common2.IsAttrSet(d.DefaultLanguage) {
-		d.DefaultLanguage = types.String{Value: settings.DefaultLanguage}
+		d.DefaultLanguage = types.StringValue(settings.DefaultLanguage)
 	}
 
 	if common2.IsAttrSet(d.CheckPasswordExpiration) {
-		d.CheckPasswordExpiration = types.Bool{Value: settings.CheckPasswordExpiration}
+		d.CheckPasswordExpiration = types.BoolValue(settings.CheckPasswordExpiration)
 	}
 
 	if common2.IsAttrSet(d.CheckPasswordPolicy) {
-		d.CheckPasswordPolicy = types.Bool{Value: settings.CheckPasswordPolicy}
+		d.CheckPasswordPolicy = types.BoolValue(settings.CheckPasswordPolicy)
 	}
 
 	return d
@@ -141,7 +141,7 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 		Then(func() { login = sql.CreateSqlLogin(ctx, req.Conn, req.Plan.toSettings(ctx)) }).
 		Then(func() {
 			resp.State = req.Plan.withSettings(login.GetSettings(ctx), req.Conn.IsAzure(ctx))
-			resp.State.Id = types.String{Value: string(login.GetId(ctx))}
+			resp.State.Id = types.StringValue(string(login.GetId(ctx)))
 		})
 }
 
@@ -152,7 +152,7 @@ func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], 
 	)
 
 	req.
-		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.State.Id.Value)) }).
+		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.State.Id.ValueString())) }).
 		Then(func() { exists = login.Exists(ctx) }).
 		Then(func() {
 			if exists {
@@ -165,7 +165,7 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 	var login sql.SqlLogin
 
 	req.
-		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.Plan.Id.Value)) }).
+		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.Plan.Id.ValueString())) }).
 		Then(func() { login.UpdateSettings(ctx, req.Plan.toSettings(ctx)) }).
 		Then(func() { resp.State = req.Plan.withSettings(login.GetSettings(ctx), req.Conn.IsAzure(ctx)) })
 }
@@ -174,6 +174,6 @@ func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceDat
 	var login sql.SqlLogin
 
 	req.
-		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.State.Id.Value)) }).
+		Then(func() { login = sql.GetSqlLogin(ctx, req.Conn, sql.LoginId(req.State.Id.ValueString())) }).
 		Then(func() { login.Drop(ctx) })
 }

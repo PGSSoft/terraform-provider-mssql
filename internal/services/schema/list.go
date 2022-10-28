@@ -52,7 +52,7 @@ func (l listDataSource) Read(ctx context.Context, req datasource.ReadRequest[lis
 	var schemas map[sql.SchemaId]sql.Schema
 	var dbId sql.DatabaseId
 
-	db := common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value)
+	db := common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString())
 
 	req.
 		Then(func() {
@@ -61,7 +61,7 @@ func (l listDataSource) Read(ctx context.Context, req datasource.ReadRequest[lis
 		}).
 		Then(func() {
 			data := listDataSourceData{
-				DatabaseId: types.String{Value: fmt.Sprint(dbId)},
+				DatabaseId: types.StringValue(fmt.Sprint(dbId)),
 				Schemas:    []resourceData{},
 			}
 			data.Id = data.DatabaseId

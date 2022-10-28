@@ -23,18 +23,18 @@ type azureAuth struct {
 type providerData struct {
 	Hostname  types.String `tfsdk:"hostname"`
 	Port      types.Int64  `tfsdk:"port"`
-	SqlAuth   types.Object `tfsdk:"sql_auth"`
-	AzureAuth types.Object `tfsdk:"azure_auth"`
+	SqlAuth   *sqlAuth     `tfsdk:"sql_auth"`
+	AzureAuth *azureAuth   `tfsdk:"azure_auth"`
 }
 
-func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionDetails, diag.Diagnostics) {
+func (pd providerData) asConnectionDetails(context.Context) (sql.ConnectionDetails, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	var addComputedError = func(summary string) {
 		diags.AddError(summary, "SQL connection details must be known during plan execution")
 	}
 
-	if pd.Hostname.Unknown {
+	if pd.Hostname.IsUnknown() {
 		addComputedError("Hostname cannot be a computed value")
 	}
 
@@ -42,51 +42,45 @@ func (pd providerData) asConnectionDetails(ctx context.Context) (sql.ConnectionD
 		Host: os.Getenv("MSSQL_HOSTNAME"),
 	}
 
-	if !pd.Hostname.Null {
-		connDetails.Host = pd.Hostname.Value
+	if !pd.Hostname.IsNull() {
+		connDetails.Host = pd.Hostname.ValueString()
 	}
 
-	if !pd.Port.Null {
-		connDetails.Host = fmt.Sprintf("%s:%d", connDetails.Host, pd.Port.Value)
+	if !pd.Port.IsNull() {
+		connDetails.Host = fmt.Sprintf("%s:%d", connDetails.Host, pd.Port.ValueInt64())
 	} else if envPort := os.Getenv("MSSQL_PORT"); envPort != "" {
 		connDetails.Host = fmt.Sprintf("%s:%s", connDetails.Host, envPort)
 	}
 
-	if !pd.SqlAuth.Null {
-		var auth sqlAuth
-		diags.Append(pd.SqlAuth.As(ctx, &auth, types.ObjectAsOptions{})...)
-
-		if auth.Username.Unknown {
+	if pd.SqlAuth != nil {
+		if pd.SqlAuth.Username.IsUnknown() {
 			addComputedError("SQL username cannot be a computed value")
 		}
 
-		if auth.Password.Unknown {
+		if pd.SqlAuth.Password.IsUnknown() {
 			addComputedError("SQL password cannot be a computed value")
 		}
 
-		connDetails.Auth = sql.ConnectionAuthSql{Username: auth.Username.Value, Password: auth.Password.Value}
+		connDetails.Auth = sql.ConnectionAuthSql{Username: pd.SqlAuth.Username.ValueString(), Password: pd.SqlAuth.Password.ValueString()}
 	}
 
-	if !pd.AzureAuth.Null {
-		var auth azureAuth
-		diags.Append(pd.AzureAuth.As(ctx, &auth, types.ObjectAsOptions{})...)
-
-		if auth.ClientId.Unknown {
+	if pd.AzureAuth != nil {
+		if pd.AzureAuth.ClientId.IsUnknown() {
 			addComputedError("Azure AD Service Principal client_id cannot be a computed value")
 		}
 
-		if auth.ClientSecret.Unknown {
+		if pd.AzureAuth.ClientSecret.IsUnknown() {
 			addComputedError("Azure AD Service Principal client_secret cannot be a computed value")
 		}
 
-		if auth.TenantId.Unknown {
+		if pd.AzureAuth.TenantId.IsUnknown() {
 			addComputedError("Azure AD Service Principal tenant_id cannot be a computed value")
 		}
 
 		connAuth := sql.ConnectionAuthAzure{
-			ClientId:     auth.ClientId.Value,
-			ClientSecret: auth.ClientSecret.Value,
-			TenantId:     auth.TenantId.Value,
+			ClientId:     pd.AzureAuth.ClientId.ValueString(),
+			ClientSecret: pd.AzureAuth.ClientSecret.ValueString(),
+			TenantId:     pd.AzureAuth.TenantId.ValueString(),
 		}
 
 		if connAuth.ClientId == "" {

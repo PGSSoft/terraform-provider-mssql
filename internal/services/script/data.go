@@ -56,11 +56,11 @@ func (d *dataSource) Read(ctx context.Context, req datasource.ReadRequest[dataSo
 	)
 
 	req.
-		Then(func() { db = common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.Value) }).
-		Then(func() { result = db.Query(ctx, req.Config.Query.Value) }).
+		Then(func() { db = common.GetResourceDb(ctx, req.Conn, req.Config.DatabaseId.ValueString()) }).
+		Then(func() { result = db.Query(ctx, req.Config.Query.ValueString()) }).
 		Then(func() {
 			req.Config.Result = result
-			req.Config.Id = types.String{Value: "query"}
+			req.Config.Id = types.StringValue("query")
 			resp.SetState(req.Config)
 		})
 }

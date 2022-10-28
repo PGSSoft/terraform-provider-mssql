@@ -10,28 +10,28 @@ func TestSqlIdentifierValidate(t *testing.T) {
 
 	testCases := map[string]validatorTestCase{
 		"Wrong type": {
-			val:             types.Int64{Value: 2},
+			val:             types.Int64Value(2),
 			expectedSummary: "Value Conversion Error",
 		},
 		"Unknown": {
-			val: types.String{Unknown: true},
+			val: types.StringUnknown(),
 		},
 		"Null": {
-			val: types.String{Null: true},
+			val: types.StringNull(),
 		},
 		"Valid": {
-			val: types.String{Value: "_idenTif@$#_er"},
+			val: types.StringValue("_idenTif@$#_er"),
 		},
 		"startingWithDigit": {
-			val:             types.String{Value: "2ndIdentifier"},
+			val:             types.StringValue("2ndIdentifier"),
 			expectedSummary: validationErrSummary,
 		},
 		"withSpace": {
-			val:             types.String{Value: "has space"},
+			val:             types.StringValue("has space"),
 			expectedSummary: validationErrSummary,
 		},
 		"forbiddenChar": {
-			val:             types.String{Value: "has&inName"},
+			val:             types.StringValue("has&inName"),
 			expectedSummary: validationErrSummary,
 		},
 	}

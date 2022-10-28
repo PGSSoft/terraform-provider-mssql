@@ -36,15 +36,15 @@ func (d *dataSource) Read(ctx context.Context, req datasource.ReadRequest[dataSo
 
 	req.
 		Then(func() {
-			login = sql.GetSqlLoginByName(ctx, req.Conn, req.Config.Name.Value)
+			login = sql.GetSqlLoginByName(ctx, req.Conn, req.Config.Name.ValueString())
 
 			if login == nil || !login.Exists(ctx) {
-				utils.AddError(ctx, "Login does not exist", fmt.Errorf("could not find SQL Login '%s'", req.Config.Name.Value))
+				utils.AddError(ctx, "Login does not exist", fmt.Errorf("could not find SQL Login '%s'", req.Config.Name.ValueString()))
 			}
 		}).
 		Then(func() {
 			state := req.Config.withSettings(login.GetSettings(ctx))
-			state.Id = types.String{Value: fmt.Sprint(login.GetId(ctx))}
+			state.Id = types.StringValue(fmt.Sprint(login.GetId(ctx)))
 
 			resp.SetState(state)
 		})

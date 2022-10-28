@@ -10,24 +10,24 @@ func TestStringLengthValidate(t *testing.T) {
 
 	testCases := map[string]validatorTestCase{
 		"Wrong type": {
-			val:             types.Int64{Value: 2},
+			val:             types.Int64Value(2),
 			expectedSummary: "Value Conversion Error",
 		},
 		"Unknown": {
-			val: types.String{Unknown: true},
+			val: types.StringUnknown(),
 		},
 		"Null": {
-			val: types.String{Null: true},
+			val: types.StringNull(),
 		},
 		"Valid": {
-			val: types.String{Value: "xxxxx"},
+			val: types.StringValue("xxxxx"),
 		},
 		"TooShort": {
-			val:             types.String{Value: "xx"},
+			val:             types.StringValue("xx"),
 			expectedSummary: validationErrSummary,
 		},
 		"TooLong": {
-			val:             types.String{Value: "xxxxx xxxxx"},
+			val:             types.StringValue("xxxxx xxxxx"),
 			expectedSummary: validationErrSummary,
 		},
 	}

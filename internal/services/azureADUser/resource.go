@@ -51,10 +51,10 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 	)
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.ValueString()) }).
 		Then(func() { user = sql.CreateUser(ctx, db, req.Plan.toSettings()) }).
 		Then(func() {
-			req.Plan.Id = types.String{Value: common2.DbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String()}
+			req.Plan.Id = types.StringValue(common2.DbObjectId[sql.UserId]{DbId: db.GetId(ctx), ObjectId: user.GetId(ctx)}.String())
 		}).
 		Then(func() { resp.State = req.Plan })
 }
@@ -67,12 +67,12 @@ func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], 
 	)
 
 	req.
-		Then(func() { id = common2.ParseDbObjectId[sql.UserId](ctx, req.State.Id.Value) }).
+		Then(func() { id = common2.ParseDbObjectId[sql.UserId](ctx, req.State.Id.ValueString()) }).
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, id.DbId) }).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
 		Then(func() {
 			state := req.State.withSettings(ctx, user.GetSettings(ctx))
-			state.DatabaseId = types.String{Value: fmt.Sprint(id.DbId)}
+			state.DatabaseId = types.StringValue(fmt.Sprint(id.DbId))
 			resp.SetState(state)
 		})
 }
@@ -90,8 +90,8 @@ func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceDat
 
 	req.
 		Then(func() {
-			db = common2.GetResourceDb(ctx, req.Conn, req.State.DatabaseId.Value)
-			id = common2.ParseDbObjectId[sql.UserId](ctx, req.State.Id.Value)
+			db = common2.GetResourceDb(ctx, req.Conn, req.State.DatabaseId.ValueString())
+			id = common2.ParseDbObjectId[sql.UserId](ctx, req.State.Id.ValueString())
 		}).
 		Then(func() { user = sql.GetUser(ctx, db, id.ObjectId) }).
 		Then(func() { user.Drop(ctx) })

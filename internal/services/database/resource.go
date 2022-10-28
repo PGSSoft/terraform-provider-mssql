@@ -39,7 +39,7 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 	req.
 		Then(func() { db = sql.CreateDatabase(ctx, req.Conn, req.Plan.toSettings()) }).
 		Then(func() { resp.State = req.Plan.withSettings(db.GetSettings(ctx)) }).
-		Then(func() { resp.State.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))} })
+		Then(func() { resp.State.Id = types.StringValue(fmt.Sprint(db.GetId(ctx))) })
 }
 
 func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], resp *resource.ReadResponse[resourceData]) {
@@ -66,13 +66,13 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 	req.
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, req.Plan.getDbId(ctx)) }).
 		Then(func() {
-			if req.State.Name.Value != req.Plan.Name.Value {
-				db.Rename(ctx, req.Plan.Name.Value)
+			if req.State.Name.ValueString() != req.Plan.Name.ValueString() {
+				db.Rename(ctx, req.Plan.Name.ValueString())
 			}
 		}).
 		Then(func() {
-			if req.State.Collation.Value != req.Plan.Collation.Value {
-				db.SetCollation(ctx, req.Plan.Collation.Value)
+			if req.State.Collation.ValueString() != req.Plan.Collation.ValueString() {
+				db.SetCollation(ctx, req.Plan.Collation.ValueString())
 			}
 		}).
 		Then(func() {

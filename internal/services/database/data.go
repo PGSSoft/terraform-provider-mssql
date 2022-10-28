@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
@@ -36,17 +37,17 @@ func (d *dataSource) Read(ctx context.Context, req datasource.ReadRequest[resour
 
 	req.
 		Then(func() {
-			db = sql.GetDatabaseByName(ctx, req.Conn, req.Config.Name.Value)
+			db = sql.GetDatabaseByName(ctx, req.Conn, req.Config.Name.ValueString())
 
 			if db == nil || !db.Exists(ctx) {
-				utils.AddError(ctx, "DB does not exist", fmt.Errorf("could not find DB '%s'", req.Config.Name.Value))
+				utils.AddError(ctx, "DB does not exist", fmt.Errorf("could not find DB '%s'", req.Config.Name.ValueString()))
 			}
 		}).
 		Then(func() {
 			state := req.Config.withSettings(db.GetSettings(ctx))
 
-			if state.Id.Unknown || state.Id.Null {
-				state.Id = types.String{Value: fmt.Sprint(db.GetId(ctx))}
+			if !common.IsAttrSet(state.Id) {
+				state.Id = types.StringValue(fmt.Sprint(db.GetId(ctx)))
 			}
 
 			resp.SetState(state)

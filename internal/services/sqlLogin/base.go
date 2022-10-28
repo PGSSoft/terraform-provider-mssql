@@ -54,11 +54,11 @@ type dataSourceData struct {
 func (d dataSourceData) withSettings(settings sql.SqlLoginSettings) dataSourceData {
 	return dataSourceData{
 		Id:                      d.Id,
-		Name:                    types.String{Value: settings.Name},
-		MustChangePassword:      types.Bool{Value: settings.MustChangePassword},
-		DefaultDatabaseId:       types.String{Value: fmt.Sprint(settings.DefaultDatabaseId)},
-		DefaultLanguage:         types.String{Value: settings.DefaultLanguage},
-		CheckPasswordExpiration: types.Bool{Value: settings.CheckPasswordExpiration},
-		CheckPasswordPolicy:     types.Bool{Value: settings.CheckPasswordPolicy},
+		Name:                    types.StringValue(settings.Name),
+		MustChangePassword:      types.BoolValue(settings.MustChangePassword),
+		DefaultDatabaseId:       types.StringValue(fmt.Sprint(settings.DefaultDatabaseId)),
+		DefaultLanguage:         types.StringValue(settings.DefaultLanguage),
+		CheckPasswordExpiration: types.BoolValue(settings.CheckPasswordExpiration),
+		CheckPasswordPolicy:     types.BoolValue(settings.CheckPasswordPolicy),
 	}
 }

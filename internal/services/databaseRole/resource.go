@@ -44,11 +44,11 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 	ownerId := common2.DbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.ValueString()) }).
 		Then(func() { dbId = db.GetId(ctx) }).
 		Then(func() {
-			if !req.Plan.OwnerId.Null && !req.Plan.OwnerId.Unknown {
-				ownerId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.OwnerId.Value)
+			if common2.IsAttrSet(req.Plan.OwnerId) {
+				ownerId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.OwnerId.ValueString())
 
 				if ownerId.DbId != dbId {
 					utils.AddError(ctx, "Role owner must be principal defined in the same DB as the role", errors.New("owner and principal DBs are different"))
@@ -57,9 +57,9 @@ func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceDat
 		}).
 		Then(func() {
 			if ownerId.IsEmpty {
-				role = sql.CreateDatabaseRole(ctx, db, req.Plan.Name.Value, sql.EmptyDatabasePrincipalId)
+				role = sql.CreateDatabaseRole(ctx, db, req.Plan.Name.ValueString(), sql.EmptyDatabasePrincipalId)
 			} else {
-				role = sql.CreateDatabaseRole(ctx, db, req.Plan.Name.Value, ownerId.ObjectId)
+				role = sql.CreateDatabaseRole(ctx, db, req.Plan.Name.ValueString(), ownerId.ObjectId)
 			}
 		}).
 		Then(func() { resp.State = req.Plan.withRoleData(ctx, role) })
@@ -73,7 +73,7 @@ func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], 
 	)
 
 	req.
-		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.State.Id.Value) }).
+		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.State.Id.ValueString()) }).
 		Then(func() { db = sql.GetDatabase(ctx, req.Conn, roleId.DbId) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, roleId.ObjectId) }).
 		Then(func() { resp.SetState(req.State.withRoleData(ctx, role)) })
@@ -89,13 +89,13 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 	ownerId := common2.DbObjectId[sql.GenericDatabasePrincipalId]{IsEmpty: true}
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.Plan.DatabaseId.ValueString()) }).
 		Then(func() { dbId = db.GetId(ctx) }).
-		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.Plan.Id.Value) }).
+		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.Plan.Id.ValueString()) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, roleId.ObjectId) }).
 		Then(func() {
-			if !req.Plan.OwnerId.Null && !req.Plan.OwnerId.Unknown {
-				ownerId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.OwnerId.Value)
+			if common2.IsAttrSet(req.Plan.OwnerId) {
+				ownerId = common2.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.OwnerId.ValueString())
 
 				if ownerId.DbId != dbId {
 					utils.AddError(ctx, "Role owner must be principal defined in the same DB as the role", errors.New("owner and principal DBs are different"))
@@ -103,8 +103,8 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 			}
 		}).
 		Then(func() {
-			if role.GetName(ctx) != req.Plan.Name.Value && !utils.HasError(ctx) {
-				role.Rename(ctx, req.Plan.Name.Value)
+			if role.GetName(ctx) != req.Plan.Name.ValueString() && !utils.HasError(ctx) {
+				role.Rename(ctx, req.Plan.Name.ValueString())
 			}
 		}).
 		Then(func() {
@@ -128,8 +128,8 @@ func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceDat
 	)
 
 	req.
-		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.State.DatabaseId.Value) }).
-		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.State.Id.Value) }).
+		Then(func() { db = common2.GetResourceDb(ctx, req.Conn, req.State.DatabaseId.ValueString()) }).
+		Then(func() { roleId = common2.ParseDbObjectId[sql.DatabaseRoleId](ctx, req.State.Id.ValueString()) }).
 		Then(func() { role = sql.GetDatabaseRole(ctx, db, roleId.ObjectId) }).
 		Then(func() { role.Drop(ctx) })
 }

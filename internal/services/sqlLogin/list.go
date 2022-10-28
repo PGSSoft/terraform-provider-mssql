@@ -51,12 +51,12 @@ func (l *listDataSource) Read(ctx context.Context, req datasource.ReadRequest[li
 		Then(func() { logins = sql.GetSqlLogins(ctx, req.Conn) }).
 		Then(func() {
 			result := listDataSourceData{
-				Id: types.String{Value: ""},
+				Id: types.StringValue(""),
 			}
 
 			for id, login := range logins {
 				s := login.GetSettings(ctx)
-				r := dataSourceData{Id: types.String{Value: fmt.Sprint(id)}}
+				r := dataSourceData{Id: types.StringValue(fmt.Sprint(id))}
 				result.Logins = append(result.Logins, r.withSettings(s))
 			}
 

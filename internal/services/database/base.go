@@ -35,14 +35,14 @@ type resourceData struct {
 }
 
 func (d resourceData) getDbId(ctx context.Context) sql.DatabaseId {
-	if d.Id.Unknown || d.Id.Null {
+	if !common.IsAttrSet(d.Id) {
 		return sql.NullDatabaseId
 	}
 
-	id, err := strconv.Atoi(d.Id.Value)
+	id, err := strconv.Atoi(d.Id.ValueString())
 
 	if err != nil {
-		utils.AddError(ctx, fmt.Sprintf("Failed to convert resource ID '%s'", d.Id.Value), err)
+		utils.AddError(ctx, fmt.Sprintf("Failed to convert resource ID '%s'", d.Id.ValueString()), err)
 	}
 
 	return sql.DatabaseId(id)
@@ -50,19 +50,21 @@ func (d resourceData) getDbId(ctx context.Context) sql.DatabaseId {
 
 func (d resourceData) toSettings() sql.DatabaseSettings {
 	return sql.DatabaseSettings{
-		Name:      d.Name.Value,
-		Collation: d.Collation.Value,
+		Name:      d.Name.ValueString(),
+		Collation: d.Collation.ValueString(),
 	}
 }
 
 func (d resourceData) withSettings(settings sql.DatabaseSettings) resourceData {
-	return resourceData{
-		Id:   d.Id,
-		Name: types.String{Value: settings.Name},
-
-		Collation: types.String{
-			Value: settings.Collation,
-			Null:  settings.Collation == "",
-		},
+	resData := resourceData{
+		Id:        d.Id,
+		Name:      types.StringValue(settings.Name),
+		Collation: types.StringValue(settings.Collation),
 	}
+
+	if settings.Collation == "" {
+		resData.Collation = types.StringNull()
+	}
+
+	return resData
 }
