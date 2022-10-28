@@ -5,6 +5,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/azureADServicePrincipal"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/azureADUser"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/database"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/databasePermission"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/databaseRole"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/databaseRoleMember"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/schema"
@@ -19,6 +20,7 @@ func Services() []core.Service {
 		azureADUser.Service(),
 
 		database.Service(),
+		databasePermission.Service(),
 		databaseRole.Service(),
 		databaseRoleMember.Service(),
 		sqlLogin.Service(),

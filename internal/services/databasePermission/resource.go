@@ -1,0 +1,93 @@
+package databasePermission
+
+import (
+	"context"
+	"fmt"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"strings"
+)
+
+type res struct{}
+
+func (r res) GetName() string {
+	return "database_permission"
+}
+
+func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
+	return tfsdk.Schema{
+		MarkdownDescription: "Grants database-level permission.",
+		Attributes: map[string]tfsdk.Attribute{
+			"id":           common.ToResourceId(attributes["id"]),
+			"principal_id": common.ToRequiredImmutable(attributes["principal_id"]),
+			"permission":   common.ToRequiredImmutable(attributes["permission"]),
+			"with_grant_option": func() tfsdk.Attribute {
+				attr := attributes["with_grant_option"]
+				attr.Optional = true
+				attr.Computed = true
+				return attr
+			}(),
+		},
+	}
+}
+
+func (r res) Read(ctx context.Context, req resource.ReadRequest[resourceData], resp *resource.ReadResponse[resourceData]) {
+	var permissions sql.DatabasePermissions
+	db, principalId, permission := r.parseInputs(ctx, req.Conn, req.State)
+
+	req.
+		Then(func() { permissions = db.GetPermissions(ctx, principalId.ObjectId) }).
+		Then(func() {
+			req.State.PrincipalId = types.String{Value: principalId.String()}
+
+			if perm, ok := permissions[permission]; ok {
+				resp.SetState(req.State.withPermission(perm))
+			}
+		})
+}
+
+func (r res) Create(ctx context.Context, req resource.CreateRequest[resourceData], resp *resource.CreateResponse[resourceData]) {
+	var (
+		db          sql.Database
+		principalId common.DbObjectId[sql.GenericDatabasePrincipalId]
+	)
+
+	req.
+		Then(func() {
+			principalId = common.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, req.Plan.PrincipalId.Value)
+		}).
+		Then(func() { db = sql.GetDatabase(ctx, req.Conn, principalId.DbId) }).
+		Then(func() { db.GrantPermission(ctx, principalId.ObjectId, req.Plan.toPermission()) }).
+		Then(func() {
+			req.Plan.WithGrantOption.Unknown = false
+			req.Plan.WithGrantOption.Null = false
+			req.Plan.Id = types.String{Value: fmt.Sprintf("%v/%s", principalId, req.Plan.Permission.Value)}
+
+			resp.State = req.Plan
+		})
+}
+
+func (r res) Update(ctx context.Context, req resource.UpdateRequest[resourceData], resp *resource.UpdateResponse[resourceData]) {
+	db, principalId, _ := r.parseInputs(ctx, req.Conn, req.Plan)
+
+	req.
+		Then(func() { db.UpdatePermission(ctx, principalId.ObjectId, req.Plan.toPermission()) }).
+		Then(func() { resp.State = req.Plan.withPermission(req.Plan.toPermission()) })
+}
+
+func (r res) Delete(ctx context.Context, req resource.DeleteRequest[resourceData], resp *resource.DeleteResponse[resourceData]) {
+	db, principalId, permission := r.parseInputs(ctx, req.Conn, req.State)
+
+	req.Then(func() { db.RevokePermission(ctx, principalId.ObjectId, permission) })
+}
+
+func (r res) parseInputs(ctx context.Context, conn sql.Connection, data resourceData) (sql.Database, common.DbObjectId[sql.GenericDatabasePrincipalId], string) {
+	parts := strings.Split(data.Id.Value, "/")
+	permission := parts[len(parts)-1]
+	principalId := common.ParseDbObjectId[sql.GenericDatabasePrincipalId](ctx, data.Id.Value[:len(data.Id.Value)-len(permission)-1])
+
+	return sql.GetDatabase(ctx, conn, principalId.DbId), principalId, permission
+}

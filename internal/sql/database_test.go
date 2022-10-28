@@ -171,6 +171,70 @@ func (s *DatabaseTestSuite) TestQuery() {
 	s.Assert().Equal("true", res[1]["col_y"])
 }
 
+func (s *DatabaseTestSuite) TestGetPermissions() {
+	const dbName = "test_db_name"
+	s.expectDatabaseSettingQuery().WithArgs(s.db.id).WillReturnRows(newRows("name", "collation_name").AddRow(dbName, ""))
+	rows := newRows("permission_name", "state").AddRow("TEST PERM1", "W").AddRow("TEST PERM2", "G")
+	expectExactQuery(s.mock, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1").
+		WithArgs(24365).
+		WillReturnRows(rows)
+
+	res := s.db.GetPermissions(s.ctx, GenericDatabasePrincipalId(24365))
+
+	s.Len(res, 2, "count")
+	s.Require().Contains(res, "TEST PERM1")
+	s.Require().Contains(res, "TEST PERM2")
+	s.Equal("TEST PERM1", res["TEST PERM1"].Name)
+	s.True(res["TEST PERM1"].WithGrantOption)
+	s.Equal("TEST PERM2", res["TEST PERM2"].Name)
+	s.False(res["TEST PERM2"].WithGrantOption)
+}
+
+func (s *DatabaseTestSuite) TestGrantPermission() {
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectUserNameQuery(144, "test_principal")
+	expectExactExec(s.mock, "GRANT TEST PERMISSION TO [test_principal]").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.db.GrantPermission(s.ctx, 144, DatabasePermission{Name: "TEST PERMISSION"})
+}
+
+func (s *DatabaseTestSuite) TestGrantPermissionWithGrantOption() {
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectUserNameQuery(246, "test_principal2")
+	expectExactExec(s.mock, "GRANT TEST PERMISSION TO [test_principal2] WITH GRANT OPTION").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.db.GrantPermission(s.ctx, 246, DatabasePermission{Name: "TEST PERMISSION", WithGrantOption: true})
+}
+
+func (s *DatabaseTestSuite) TestUpdatePermissionAddGrantOption() {
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectUserNameQuery(156, "modified_principal")
+	expectExactExec(s.mock, "GRANT TEST PERMISSION TO [modified_principal] WITH GRANT OPTION").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.db.UpdatePermission(s.ctx, 156, DatabasePermission{Name: "TEST PERMISSION", WithGrantOption: true})
+}
+
+func (s *DatabaseTestSuite) TestUpdatePermissionRevokeGrantOption() {
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectUserNameQuery(156, "modified_principal")
+	expectExactExec(s.mock, "REVOKE GRANT OPTION FOR TEST PERMISSION TO [modified_principal]").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.db.UpdatePermission(s.ctx, 156, DatabasePermission{Name: "TEST PERMISSION", WithGrantOption: false})
+}
+
+func (s *DatabaseTestSuite) TestRevokePermission() {
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectCurrentDatabaseSettingsQuery()
+	s.expectUserNameQuery(758, "modified_principal")
+	expectExactExec(s.mock, "REVOKE TEST PERMISSION TO [modified_principal] CASCADE").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.db.RevokePermission(s.ctx, 758, "TEST PERMISSION")
+}
+
 func (s *DatabaseTestSuite) expectDatabasesQuery() *sqlmock.ExpectedQuery {
 	return expectExactQuery(s.mock, "SELECT [database_id] FROM sys.databases")
 }
@@ -181,4 +245,8 @@ func (s *DatabaseTestSuite) expectDatabaseSettingQuery() *sqlmock.ExpectedQuery 
 
 func (s *DatabaseTestSuite) expectDatabaseIdQuery() *sqlmock.ExpectedQuery {
 	return expectExactQuery(s.mock, "SELECT database_id FROM sys.databases WHERE [name] = @p1")
+}
+
+func (s *DatabaseTestSuite) expectCurrentDatabaseSettingsQuery() {
+	s.expectDatabaseSettingQuery().WithArgs(s.db.id).WillReturnRows(newRows("name", "collation_name").AddRow("test_db", ""))
 }

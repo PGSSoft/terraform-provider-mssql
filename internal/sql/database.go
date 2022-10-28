@@ -15,6 +15,13 @@ type DatabaseSettings struct {
 	Collation string
 }
 
+type DatabasePermission struct {
+	Name            string
+	WithGrantOption bool
+}
+
+type DatabasePermissions map[string]DatabasePermission
+
 type Database interface {
 	GetConnection(context.Context) Connection
 	GetId(context.Context) DatabaseId
@@ -25,6 +32,10 @@ type Database interface {
 	Drop(context.Context)
 	Query(ctx context.Context, query string) []map[string]string
 	Exec(ctx context.Context, script string)
+	GetPermissions(ctx context.Context, id GenericDatabasePrincipalId) DatabasePermissions
+	GrantPermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission)
+	UpdatePermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission)
+	RevokePermission(ctx context.Context, id GenericDatabasePrincipalId, permissionName string)
 	connect(context.Context) *sql.DB
 	getUserName(ctx context.Context, id GenericDatabasePrincipalId) string
 }
@@ -177,6 +188,81 @@ func (db *database) Exec(ctx context.Context, script string) {
 	if _, err := db.connect(ctx).ExecContext(ctx, script); err != nil {
 		utils.AddError(ctx, "Failed to execute SQL script", err)
 	}
+}
+
+func (db *database) GetPermissions(ctx context.Context, id GenericDatabasePrincipalId) DatabasePermissions {
+	conn := db.connect(ctx)
+
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	res, err := conn.
+		QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1", id)
+
+	perms := DatabasePermissions{}
+
+	switch err {
+	case sql.ErrNoRows:
+	case nil:
+		for res.Next() {
+			perm := DatabasePermission{}
+			var state string
+			err := res.Scan(&perm.Name, &state)
+			utils.AddError(ctx, "Failed to parse result", err)
+			perm.WithGrantOption = state == "W"
+			perms[perm.Name] = perm
+		}
+	default:
+		utils.AddError(ctx, "Failed to retrieve permissions", err)
+		return nil
+	}
+
+	return perms
+}
+
+func (db *database) GrantPermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission) {
+	conn := db.connect(ctx)
+	userName := db.getUserName(ctx, id)
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			stat := fmt.Sprintf("GRANT %s TO [%s]", permission.Name, userName)
+			if permission.WithGrantOption {
+				stat += " WITH GRANT OPTION"
+			}
+
+			_, err := conn.ExecContext(ctx, stat)
+			utils.AddError(ctx, "Failed to grant permission", err)
+		})
+}
+
+func (db *database) UpdatePermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission) {
+	conn := db.connect(ctx)
+	userName := db.getUserName(ctx, id)
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			stat := fmt.Sprintf("GRANT %s TO [%s] WITH GRANT OPTION", permission.Name, userName)
+			if !permission.WithGrantOption {
+				stat = fmt.Sprintf("REVOKE GRANT OPTION FOR %s TO [%s]", permission.Name, userName)
+			}
+
+			_, err := conn.ExecContext(ctx, stat)
+			utils.AddError(ctx, "Failed to modify permission grant", err)
+		})
+}
+
+func (db *database) RevokePermission(ctx context.Context, id GenericDatabasePrincipalId, permissionName string) {
+	conn := db.connect(ctx)
+	userName := db.getUserName(ctx, id)
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			stat := fmt.Sprintf("REVOKE %s TO [%s] CASCADE", permissionName, userName)
+			_, err := conn.ExecContext(ctx, stat)
+			utils.AddError(ctx, "Failed to revoke permission", err)
+		})
 }
 
 func (db *database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {

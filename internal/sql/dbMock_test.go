@@ -56,6 +56,22 @@ func (m *dbMock) Exec(ctx context.Context, script string) {
 	m.Called(ctx, script)
 }
 
+func (m *dbMock) GetPermissions(ctx context.Context, id GenericDatabasePrincipalId) DatabasePermissions {
+	return m.Called(ctx, id).Get(0).(DatabasePermissions)
+}
+
+func (m *dbMock) GrantPermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission) {
+	m.Called(ctx, id, permission)
+}
+
+func (m *dbMock) UpdatePermission(ctx context.Context, id GenericDatabasePrincipalId, permission DatabasePermission) {
+	m.Called(ctx, id, permission)
+}
+
+func (m *dbMock) RevokePermission(ctx context.Context, id GenericDatabasePrincipalId, permissionName string) {
+	m.Called(ctx, id, permissionName)
+}
+
 func (m *dbMock) connect(ctx context.Context) *sql.DB {
 	return m.Called(ctx).Get(0).(*sql.DB)
 }
