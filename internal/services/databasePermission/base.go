@@ -1,7 +1,6 @@
 package databasePermission
 
 import (
-	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -20,27 +19,7 @@ var attributes = map[string]tfsdk.Attribute{
 		Type:                types.StringType,
 	},
 	"with_grant_option": {
-		MarkdownDescription: "When set to `true`, `principal_id` will be allowed to grant the `permission` to other principals. Defaults to `false`.",
+		MarkdownDescription: "When set to `true`, `principal_id` will be allowed to grant the `permission` to other principals.",
 		Type:                types.BoolType,
 	},
-}
-
-type resourceData struct {
-	Id              types.String `tfsdk:"id"`
-	PrincipalId     types.String `tfsdk:"principal_id"`
-	Permission      types.String `tfsdk:"permission"`
-	WithGrantOption types.Bool   `tfsdk:"with_grant_option"`
-}
-
-func (d resourceData) withPermission(perm sql.DatabasePermission) resourceData {
-	d.Permission = types.String{Value: perm.Name}
-	d.WithGrantOption = types.Bool{Value: perm.WithGrantOption}
-	return d
-}
-
-func (d resourceData) toPermission() sql.DatabasePermission {
-	return sql.DatabasePermission{
-		Name:            d.Permission.Value,
-		WithGrantOption: d.WithGrantOption.Value,
-	}
 }

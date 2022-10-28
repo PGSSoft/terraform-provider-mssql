@@ -11,6 +11,26 @@ import (
 	"strings"
 )
 
+type resourceData struct {
+	Id              types.String `tfsdk:"id"`
+	PrincipalId     types.String `tfsdk:"principal_id"`
+	Permission      types.String `tfsdk:"permission"`
+	WithGrantOption types.Bool   `tfsdk:"with_grant_option"`
+}
+
+func (d resourceData) withPermission(perm sql.DatabasePermission) resourceData {
+	d.Permission = types.String{Value: perm.Name}
+	d.WithGrantOption = types.Bool{Value: perm.WithGrantOption}
+	return d
+}
+
+func (d resourceData) toPermission() sql.DatabasePermission {
+	return sql.DatabasePermission{
+		Name:            d.Permission.Value,
+		WithGrantOption: d.WithGrantOption.Value,
+	}
+}
+
 type res struct{}
 
 func (r res) GetName() string {
@@ -26,6 +46,7 @@ func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
 			"permission":   common.ToRequiredImmutable(attributes["permission"]),
 			"with_grant_option": func() tfsdk.Attribute {
 				attr := attributes["with_grant_option"]
+				attr.MarkdownDescription += " Defaults to `false`."
 				attr.Optional = true
 				attr.Computed = true
 				return attr
