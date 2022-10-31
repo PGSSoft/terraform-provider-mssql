@@ -45,3 +45,11 @@ func (c *connectionMock) getSqlConnection(ctx context.Context) *sql.DB {
 func (c *connectionMock) getDBSqlConnection(ctx context.Context, dbName string) *sql.DB {
 	return c.db
 }
+
+func (c *connectionMock) lookupServerPrincipalName(ctx context.Context, id GenericServerPrincipalId) string {
+	return c.Called(ctx, id).String(0)
+}
+
+func (c *connectionMock) lookupServerPrincipalId(ctx context.Context, name string) GenericServerPrincipalId {
+	return c.Called(ctx, name).Get(0).(GenericServerPrincipalId)
+}

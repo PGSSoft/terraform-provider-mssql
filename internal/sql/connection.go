@@ -34,6 +34,8 @@ type Connection interface {
 	getConnectionDetails(context.Context) ConnectionDetails
 	getSqlConnection(context.Context) *sql.DB
 	getDBSqlConnection(_ context.Context, dbName string) *sql.DB
+	lookupServerPrincipalName(ctx context.Context, id GenericServerPrincipalId) string
+	lookupServerPrincipalId(ctx context.Context, name string) GenericServerPrincipalId
 }
 
 type connection struct {
@@ -139,4 +141,18 @@ func (c *connection) getDBSqlConnection(ctx context.Context, dbName string) *sql
 	}
 
 	return conn.(*sql.DB)
+}
+
+func (c *connection) lookupServerPrincipalName(ctx context.Context, id GenericServerPrincipalId) string {
+	var name string
+	err := c.conn.QueryRowContext(ctx, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1", id).Scan(&name)
+	utils.AddError(ctx, "Failed to lookup server principal name", err)
+	return name
+}
+
+func (c *connection) lookupServerPrincipalId(ctx context.Context, name string) GenericServerPrincipalId {
+	var id GenericServerPrincipalId
+	err := c.conn.QueryRowContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", name).Scan(&id)
+	utils.AddError(ctx, "Failed to lookup server principal ID", err)
+	return id
 }
