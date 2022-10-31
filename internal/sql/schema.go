@@ -7,6 +7,13 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
+type SchemaPermission struct {
+	Name            string
+	WithGrantOption bool
+}
+
+type SchemaPermissions map[string]SchemaPermission
+
 type Schema interface {
 	GetDb(context.Context) Database
 	GetId(context.Context) SchemaId
@@ -14,6 +21,10 @@ type Schema interface {
 	GetOwnerId(context.Context) GenericDatabasePrincipalId
 	ChangeOwner(_ context.Context, ownerId GenericDatabasePrincipalId)
 	Drop(context.Context)
+	GetPermissions(ctx context.Context, id GenericDatabasePrincipalId) SchemaPermissions
+	GrantPermission(ctx context.Context, id GenericDatabasePrincipalId, permission SchemaPermission)
+	UpdatePermission(ctx context.Context, id GenericDatabasePrincipalId, permission SchemaPermission)
+	RevokePermission(ctx context.Context, id GenericDatabasePrincipalId, permission string)
 }
 
 func GetSchema(_ context.Context, db Database, id SchemaId) Schema {
@@ -135,4 +146,82 @@ func (s schema) Drop(ctx context.Context) {
 		_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP SCHEMA [%s]", schemaName))
 		utils.AddError(ctx, "Failed to drop schema", err)
 	})
+}
+
+func (s schema) GetPermissions(ctx context.Context, principalId GenericDatabasePrincipalId) SchemaPermissions {
+	conn := s.db.connect(ctx)
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	res, err := conn.QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class]=3 AND [major_id]=@p1 AND [grantee_principal_id]=@p2", s.id, principalId)
+
+	perms := SchemaPermissions{}
+
+	switch err {
+	case sql.ErrNoRows:
+		return perms
+	case nil:
+		for res.Next() {
+			var state string
+			perm := SchemaPermission{}
+			err := res.Scan(&perm.Name, &state)
+			utils.AddError(ctx, "Failed to parse schema permissions", err)
+			perm.WithGrantOption = state == "W"
+			perms[perm.Name] = perm
+		}
+	default:
+		utils.AddError(ctx, "Failed to fetch schema permissions", err)
+		return nil
+	}
+
+	return perms
+}
+
+func (s schema) GrantPermission(ctx context.Context, principalId GenericDatabasePrincipalId, permission SchemaPermission) {
+	schemaName := s.GetName(ctx)
+	principalName := s.db.getUserName(ctx, principalId)
+	var conn *sql.DB
+
+	utils.StopOnError(ctx).
+		Then(func() { conn = s.db.connect(ctx) }).
+		Then(func() {
+			stat := fmt.Sprintf("GRANT %s ON schema::[%s] TO [%s]", permission.Name, schemaName, principalName)
+			if permission.WithGrantOption {
+				stat += " WITH GRANT OPTION"
+			}
+			_, err := conn.ExecContext(ctx, stat)
+			utils.AddError(ctx, "Failed to grant schema permission", err)
+		})
+}
+
+func (s schema) UpdatePermission(ctx context.Context, principalId GenericDatabasePrincipalId, permission SchemaPermission) {
+	if permission.WithGrantOption {
+		s.GrantPermission(ctx, principalId, permission)
+		return
+	}
+
+	schemaName := s.GetName(ctx)
+	principalName := s.db.getUserName(ctx, principalId)
+	var conn *sql.DB
+
+	utils.StopOnError(ctx).
+		Then(func() { conn = s.db.connect(ctx) }).
+		Then(func() {
+			_, err := conn.ExecContext(ctx, fmt.Sprintf("REVOKE GRANT OPTION FOR %s ON schema::[%s] FROM [%s] CASCADE", permission.Name, schemaName, principalName))
+			utils.AddError(ctx, "Failed to revoke grant option", err)
+		})
+}
+
+func (s schema) RevokePermission(ctx context.Context, principalId GenericDatabasePrincipalId, permission string) {
+	schemaName := s.GetName(ctx)
+	principalName := s.db.getUserName(ctx, principalId)
+	var conn *sql.DB
+
+	utils.StopOnError(ctx).
+		Then(func() { conn = s.db.connect(ctx) }).
+		Then(func() {
+			_, err := conn.ExecContext(ctx, fmt.Sprintf("REVOKE %s ON schema::[%s] FROM [%s] CASCADE", permission, schemaName, principalName))
+			utils.AddError(ctx, "Failed to revoke permission", err)
+		})
 }

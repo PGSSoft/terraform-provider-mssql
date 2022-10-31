@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	_ resource.ResourceWithConfigure   = &resourceWrapper[any]{}
-	_ resource.ResourceWithImportState = &resourceWrapper[any]{}
+	_ resource.ResourceWithConfigure      = &resourceWrapper[any]{}
+	_ resource.ResourceWithImportState    = &resourceWrapper[any]{}
+	_ resource.ResourceWithValidateConfig = &resourceWrapper[any]{}
 )
 
 func NewResource[T any](r Resource[T]) func() resource.ResourceWithConfigure {
@@ -31,7 +32,7 @@ func (r *resourceWrapper[T]) Metadata(_ context.Context, request resource.Metada
 	response.TypeName = fmt.Sprintf("%s_%s", request.ProviderTypeName, r.r.GetName())
 }
 
-func (r *resourceWrapper[T]) Configure(ctx context.Context, request resource.ConfigureRequest, response *resource.ConfigureResponse) {
+func (r *resourceWrapper[T]) Configure(_ context.Context, request resource.ConfigureRequest, response *resource.ConfigureResponse) {
 	if request.ProviderData == nil {
 		return
 	}
@@ -118,4 +119,18 @@ func (r *resourceWrapper[T]) Delete(ctx context.Context, request resource.Delete
 
 func (r *resourceWrapper[T]) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
+}
+
+func (r *resourceWrapper[T]) ValidateConfig(ctx context.Context, request resource.ValidateConfigRequest, response *resource.ValidateConfigResponse) {
+	res, ok := r.r.(ResourceWithValidation[T])
+	if !ok {
+		return
+	}
+
+	ctx = utils.WithDiagnostics(ctx, &response.Diagnostics)
+
+	req := ValidateRequest[T]{}
+	req.monad = utils.StopOnError(ctx).Then(func() { req.Config = utils.GetData[T](ctx, request.Config) })
+	resp := ValidateResponse[T]{}
+	res.Validate(ctx, req, &resp)
 }
