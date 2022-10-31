@@ -79,3 +79,7 @@ func (m *dbMock) connect(ctx context.Context) *sql.DB {
 func (m *dbMock) getUserName(ctx context.Context, id GenericDatabasePrincipalId) string {
 	return m.Called(ctx, id).String(0)
 }
+
+func (m *dbMock) expectUsernameLookup(userId int, userName string) {
+	m.On("getUserName", mock.Anything, GenericDatabasePrincipalId(userId)).Return(userName)
+}

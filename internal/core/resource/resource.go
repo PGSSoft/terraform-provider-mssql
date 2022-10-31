@@ -9,14 +9,18 @@ import (
 
 type StateSetter[TData any] func(state TData)
 
-var _ utils.ErrorMonad = requestBase{}
+var _ utils.ErrorMonad = monadRequest{}
 
-type requestBase struct {
+type monadRequest struct {
 	monad utils.ErrorMonad
-	Conn  sql.Connection
 }
 
-func (r requestBase) Then(f func()) utils.ErrorMonad {
+type requestBase struct {
+	monadRequest
+	Conn sql.Connection
+}
+
+func (r monadRequest) Then(f func()) utils.ErrorMonad {
 	return r.monad.Then(f)
 }
 
@@ -72,4 +76,15 @@ type Resource[TData any] interface {
 	Create(ctx context.Context, req CreateRequest[TData], resp *CreateResponse[TData])
 	Update(ctx context.Context, req UpdateRequest[TData], resp *UpdateResponse[TData])
 	Delete(ctx context.Context, req DeleteRequest[TData], resp *DeleteResponse[TData])
+}
+
+type ValidateRequest[TData any] struct {
+	monadRequest
+	Config TData
+}
+
+type ValidateResponse[TData any] struct{}
+
+type ResourceWithValidation[TData any] interface {
+	Validate(ctx context.Context, req ValidateRequest[TData], resp *ValidateResponse[TData])
 }
