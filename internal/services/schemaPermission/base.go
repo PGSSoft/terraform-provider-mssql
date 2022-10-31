@@ -11,7 +11,7 @@ var attributes = map[string]tfsdk.Attribute{
 		Type:                types.StringType,
 	},
 	"schema_id": {
-		MarkdownDescription: "`<database_id>/<schema_id`. Can be retrieved using `mssql_schema`.",
+		MarkdownDescription: "`<database_id>/<schema_id>`. Can be retrieved using `mssql_schema`.",
 		Type:                types.StringType,
 	},
 	"principal_id": {

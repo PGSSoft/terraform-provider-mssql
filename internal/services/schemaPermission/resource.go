@@ -125,7 +125,7 @@ func (r res) Validate(ctx context.Context, req resource.ValidateRequest[resource
 
 	req.Then(func() {
 		if schemaId.DbId != principalId.DbId {
-			err := fmt.Errorf("schema_id points to DB with ID %d while principal_id points to DB with ID %d", schemaId.DbId, principalId.ObjectId)
+			err := fmt.Errorf("schema_id points to DB with ID %d while principal_id points to DB with ID %d", schemaId.DbId, principalId.DbId)
 			utils.AddError(ctx, "Schema and Principal must belong to the same DB", err)
 		}
 	})
