@@ -6,11 +6,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"strconv"
 )
 
 type res struct{}
@@ -21,7 +19,7 @@ func (r res) GetName() string {
 
 func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
 	return tfsdk.Schema{
-		MarkdownDescription: "Managed server-level role.",
+		MarkdownDescription: "Manages server-level role.",
 		Attributes: map[string]tfsdk.Attribute{
 			"id":   common.ToResourceId(attributes["id"]),
 			"name": common.ToRequired(attributes["name"]),
@@ -39,7 +37,7 @@ func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
 }
 
 func (r res) Read(ctx context.Context, req resource.ReadRequest[resourceData], resp *resource.ReadResponse[resourceData]) {
-	id := r.parseId(ctx, req.State)
+	id := parseId(ctx, req.State)
 	var role sql.ServerRole
 
 	req.
@@ -61,7 +59,7 @@ func (r res) Create(ctx context.Context, req resource.CreateRequest[resourceData
 }
 
 func (r res) Update(ctx context.Context, req resource.UpdateRequest[resourceData], resp *resource.UpdateResponse[resourceData]) {
-	id := r.parseId(ctx, req.Plan)
+	id := parseId(ctx, req.Plan)
 	var role sql.ServerRole
 
 	req.
@@ -71,16 +69,10 @@ func (r res) Update(ctx context.Context, req resource.UpdateRequest[resourceData
 }
 
 func (r res) Delete(ctx context.Context, req resource.DeleteRequest[resourceData], resp *resource.DeleteResponse[resourceData]) {
-	id := r.parseId(ctx, req.State)
+	id := parseId(ctx, req.State)
 	var role sql.ServerRole
 
 	req.
 		Then(func() { role = sql.GetServerRole(ctx, req.Conn, id) }).
 		Then(func() { role.Drop(ctx) })
-}
-
-func (r res) parseId(ctx context.Context, data resourceData) sql.ServerRoleId {
-	id, err := strconv.Atoi(data.Id.ValueString())
-	utils.AddError(ctx, "Failed to parse ID", err)
-	return sql.ServerRoleId(id)
 }

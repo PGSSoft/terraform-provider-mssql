@@ -2,7 +2,7 @@ resource "mssql_server_role" "owner" {
   name = "owner_role"
 }
 
-resource "mssql_database_role" "example" {
+resource "mssql_server_role" "example" {
   name     = "example"
-  owner_id = data.mssql_server_role.owner.id
+  owner_id = mssql_server_role.owner.id
 }

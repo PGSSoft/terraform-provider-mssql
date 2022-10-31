@@ -9,15 +9,6 @@ import (
 )
 
 func testResource(testCtx *acctest.TestContext) {
-	fetchPrincipalId := func(name string) string {
-		var id string
-		err := testCtx.GetMasterDBConnection().
-			QueryRow(fmt.Sprintf("SELECT [principal_id] FROM sys.server_principals WHERE [name]=%s", name)).Scan(&id)
-		testCtx.Require.NoError(err, "Fetching IDs")
-
-		return id
-	}
-
 	newResource := func(resName string, name string, ownerId string) string {
 		attrs := ""
 		if ownerId != "" {
@@ -35,8 +26,8 @@ resource "mssql_server_role" %[1]q {
 	testCtx.ExecMasterDB("CREATE SERVER ROLE [test_role_owner]")
 	defer testCtx.ExecMasterDB("DROP SERVER ROLE [test_role_owner]")
 
-	testOwnerId := fetchPrincipalId("'test_role_owner'")
-	currentLoginId := fetchPrincipalId("ORIGINAL_LOGIN()")
+	testOwnerId := fetchPrincipalId(testCtx, "'test_role_owner'")
+	currentLoginId := fetchPrincipalId(testCtx, "ORIGINAL_LOGIN()")
 	var actualRoleId, actualOwnerId string
 
 	testCtx.Test(resource.TestCase{

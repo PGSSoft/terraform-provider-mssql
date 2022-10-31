@@ -2,6 +2,7 @@ package serverRole
 
 import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	sdkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -25,14 +26,14 @@ func (s service) Resources() []func() sdkresource.ResourceWithConfigure {
 
 func (s service) DataSources() []func() sdkdatasource.DataSourceWithConfigure {
 	return []func() sdkdatasource.DataSourceWithConfigure{
-		//datasource.NewDataSource[dataSourceData](&dataSource{}),
+		datasource.NewDataSource[resourceData](&dataSource{}),
 		//datasource.NewDataSource[listDataSourceData](&listDataSource{}),
 	}
 }
 
 func (s service) Tests() core.AccTests {
 	return core.AccTests{
-		//DataSource:     testDataSource,
+		DataSource: testDataSource,
 		//ListDataSource: testListDataSource,
 		Resource: testResource,
 	}

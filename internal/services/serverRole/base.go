@@ -14,7 +14,7 @@ import (
 
 var attributes = map[string]tfsdk.Attribute{
 	"id": {
-		MarkdownDescription: "Role principal ID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.",
+		MarkdownDescription: "Role principal ID.",
 		Type:                types.StringType,
 	},
 	"name": {
@@ -54,4 +54,10 @@ func (d resourceData) toSettings(ctx context.Context) sql.ServerRoleSettings {
 	}
 
 	return settings
+}
+
+func parseId(ctx context.Context, data resourceData) sql.ServerRoleId {
+	id, err := strconv.Atoi(data.Id.ValueString())
+	utils.AddError(ctx, "Failed to parse ID", err)
+	return sql.ServerRoleId(id)
 }

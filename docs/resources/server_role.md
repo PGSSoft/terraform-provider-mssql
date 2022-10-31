@@ -3,12 +3,12 @@
 page_title: "mssql_server_role Resource - terraform-provider-mssql"
 subcategory: ""
 description: |-
-  Managed server-level role.
+  Manages server-level role.
 ---
 
 # mssql_server_role (Resource)
 
-Managed server-level role.
+Manages server-level role.
 
 ## Example Usage
 
@@ -17,9 +17,9 @@ resource "mssql_server_role" "owner" {
   name = "owner_role"
 }
 
-resource "mssql_database_role" "example" {
+resource "mssql_server_role" "example" {
   name     = "example"
-  owner_id = data.mssql_server_role.owner.id
+  owner_id = mssql_server_role.owner.id
 }
 ```
 
@@ -36,7 +36,7 @@ resource "mssql_database_role" "example" {
 
 ### Read-Only
 
-- `id` (String) Role principal ID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.
+- `id` (String) Role principal ID.
 
 ## Import
 
