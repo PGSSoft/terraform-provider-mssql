@@ -28,6 +28,19 @@ func (s *ServerRoleTestSuite) TestGetServerRole() {
 	s.Equal(ServerRoleId(135), role.GetId(s.ctx))
 }
 
+func (s *ServerRoleTestSuite) TestGetServerRoles() {
+	expectExactQuery(s.mock, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'").
+		WillReturnRows(newRows("principal_id").AddRow(23).AddRow(63))
+
+	roles := GetServerRoles(s.ctx, s.connMock)
+
+	s.Len(roles, 2, "count")
+	s.Require().Contains(roles, ServerRoleId(23))
+	s.Equal(ServerRoleId(23), roles[23].GetId(s.ctx))
+	s.Require().Contains(roles, ServerRoleId(63))
+	s.Equal(ServerRoleId(63), roles[63].GetId(s.ctx))
+}
+
 func (s *ServerRoleTestSuite) TestCreateServerRole() {
 	s.expectServerPrincipalNameLookupQuery(245, "test_owner")
 	expectExactExec(s.mock, "CREATE SERVER ROLE [test_role] AUTHORIZATION [test_owner]").WillReturnResult(sqlmock.NewResult(0, 1))

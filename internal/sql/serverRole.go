@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
@@ -18,12 +19,41 @@ type ServerRole interface {
 	Drop(ctx context.Context)
 }
 
+type ServerRoles map[ServerRoleId]ServerRole
+
 func GetServerRole(_ context.Context, conn Connection, id ServerRoleId) ServerRole {
 	return serverRole{conn: conn, id: id}
 }
 
 func GetServerRoleByName(ctx context.Context, conn Connection, name string) ServerRole {
 	return GetServerRole(ctx, conn, ServerRoleId(conn.lookupServerPrincipalId(ctx, name)))
+}
+
+func GetServerRoles(ctx context.Context, conn Connection) ServerRoles {
+	sqlConn := conn.getSqlConnection(ctx)
+
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	res, err := sqlConn.QueryContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'")
+
+	roles := ServerRoles{}
+	switch err {
+	case sql.ErrNoRows:
+		return roles
+	case nil:
+		for res.Next() {
+			var id ServerRoleId
+			err := res.Scan(&id)
+			utils.AddError(ctx, "Failed to parse server roles result", err)
+			roles[id] = GetServerRole(ctx, conn, id)
+		}
+	default:
+		utils.AddError(ctx, "Failed to fetch server roles", err)
+	}
+
+	return roles
 }
 
 func CreateServerRole(ctx context.Context, conn Connection, settings ServerRoleSettings) ServerRole {
