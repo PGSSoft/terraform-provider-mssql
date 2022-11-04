@@ -65,6 +65,7 @@ output "login_id" {
 ### Read-Only
 
 - `id` (String) Login SID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.
+- `principal_id` (String) ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.
 
 ## Import
 

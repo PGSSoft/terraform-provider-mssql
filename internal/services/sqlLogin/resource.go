@@ -22,6 +22,7 @@ type resourceData struct {
 	DefaultLanguage         types.String `tfsdk:"default_language"`
 	CheckPasswordExpiration types.Bool   `tfsdk:"check_password_expiration"`
 	CheckPasswordPolicy     types.Bool   `tfsdk:"check_password_policy"`
+	PrincipalId             types.String `tfsdk:"principal_id"`
 }
 
 func (d resourceData) toSettings(ctx context.Context) sql.SqlLoginSettings {
@@ -48,6 +49,7 @@ func (d resourceData) toSettings(ctx context.Context) sql.SqlLoginSettings {
 
 func (d resourceData) withSettings(settings sql.SqlLoginSettings, isAzure bool) resourceData {
 	d.Name = types.StringValue(settings.Name)
+	d.PrincipalId = types.StringValue(fmt.Sprint(settings.PrincipalId))
 
 	if isAzure {
 		return d
@@ -128,6 +130,11 @@ func (r *res) GetSchema(context.Context) tfsdk.Schema {
 				attr := attributes["check_password_policy"]
 				attr.Optional = true
 				attr.MarkdownDescription += " Defaults to `true`." + azureSQLNote
+				return attr
+			}(),
+			"principal_id": func() tfsdk.Attribute {
+				attr := attributes["principal_id"]
+				attr.Computed = true
 				return attr
 			}(),
 		},

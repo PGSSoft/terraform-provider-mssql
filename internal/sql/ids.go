@@ -24,6 +24,8 @@ type GenericServerPrincipalId int
 
 type ServerRoleId GenericServerPrincipalId
 
+type SqlLoginId GenericServerPrincipalId
+
 const EmptyServerPrincipalId GenericServerPrincipalId = -1
 
 type NumericObjectId interface {

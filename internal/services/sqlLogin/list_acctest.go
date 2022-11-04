@@ -7,7 +7,7 @@ import (
 )
 
 func testListDataSource(testCtx *acctest.TestContext) {
-	var loginId string
+	var loginId, principalId string
 
 	defer testCtx.ExecMasterDB("DROP LOGIN [test_sql_login_list]")
 
@@ -16,8 +16,8 @@ func testListDataSource(testCtx *acctest.TestContext) {
 			conn := testCtx.GetMasterDBConnection()
 			err := conn.QueryRow(`
 CREATE LOGIN [test_sql_login_list] WITH PASSWORD='Str0ngPa$$w0rd124';
-SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_sql_login_list'
-`).Scan(&loginId)
+SELECT CONVERT(VARCHAR(85), [sid], 1), [principal_id] FROM sys.sql_logins WHERE [name]='test_sql_login_list'
+`).Scan(&loginId, &principalId)
 
 			testCtx.Require.NoError(err, "creating login")
 		},
@@ -28,6 +28,7 @@ SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name]='test_sql
 					expectedAttributes := map[string]string{
 						"id":                        loginId,
 						"name":                      "test_sql_login_list",
+						"principal_id":              principalId,
 						"must_change_password":      "false",
 						"default_database_id":       "1",
 						"default_language":          "us_english",

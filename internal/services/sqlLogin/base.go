@@ -39,6 +39,10 @@ var attributes = map[string]tfsdk.Attribute{
 		MarkdownDescription: "When `true`, the Windows password policies of the computer on which SQL Server is running are enforced on this login.",
 		Type:                types.BoolType,
 	},
+	"principal_id": {
+		MarkdownDescription: "ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.",
+		Type:                types.StringType,
+	},
 }
 
 type dataSourceData struct {
@@ -49,6 +53,7 @@ type dataSourceData struct {
 	DefaultLanguage         types.String `tfsdk:"default_language"`
 	CheckPasswordExpiration types.Bool   `tfsdk:"check_password_expiration"`
 	CheckPasswordPolicy     types.Bool   `tfsdk:"check_password_policy"`
+	PrincipalId             types.String `tfsdk:"principal_id"`
 }
 
 func (d dataSourceData) withSettings(settings sql.SqlLoginSettings) dataSourceData {
@@ -60,5 +65,6 @@ func (d dataSourceData) withSettings(settings sql.SqlLoginSettings) dataSourceDa
 		DefaultLanguage:         types.StringValue(settings.DefaultLanguage),
 		CheckPasswordExpiration: types.BoolValue(settings.CheckPasswordExpiration),
 		CheckPasswordPolicy:     types.BoolValue(settings.CheckPasswordPolicy),
+		PrincipalId:             types.StringValue(fmt.Sprint(settings.PrincipalId)),
 	}
 }

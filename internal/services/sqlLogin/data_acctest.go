@@ -18,7 +18,7 @@ data "mssql_sql_login" %[1]q {
 `, resourceName, loginName)
 	}
 
-	var loginId string
+	var loginId, principalId string
 
 	defer testCtx.ExecMasterDB("DROP LOGIN [test_login]")
 
@@ -38,13 +38,14 @@ data "mssql_sql_login" %[1]q {
 					_, err := conn.Exec("CREATE LOGIN [test_login] WITH PASSWORD='C0mplicatedPa$$w0rd123'" + loginOptions)
 					testCtx.Require.NoError(err, "creating login")
 
-					err = conn.QueryRow("SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins WHERE [name] = 'test_login'").Scan(&loginId)
+					err = conn.QueryRow("SELECT CONVERT(VARCHAR(85), [sid], 1), [principal_id] FROM sys.sql_logins WHERE [name] = 'test_login'").Scan(&loginId, &principalId)
 					testCtx.Require.NoError(err, "fetching IDs")
 				},
 				Config: newDataResource("exists", "test_login"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("data.mssql_sql_login.exists", "id", &loginId),
 					resource.TestCheckResourceAttr("data.mssql_sql_login.exists", "name", "test_login"),
+					resource.TestCheckResourceAttrPtr("data.mssql_sql_login.exists", "principal_id", &principalId),
 					func(state *terraform.State) error {
 						if testCtx.IsAzureTest {
 							return nil

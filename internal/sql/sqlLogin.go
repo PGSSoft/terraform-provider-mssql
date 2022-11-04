@@ -19,6 +19,7 @@ type SqlLoginSettings struct {
 	DefaultLanguage         string
 	CheckPasswordExpiration bool
 	CheckPasswordPolicy     bool
+	PrincipalId             SqlLoginId
 }
 
 func (s SqlLoginSettings) toSqlOptions(ctx context.Context, conn Connection) string {
@@ -175,7 +176,8 @@ SELECT
     db.database_id AS default_database_id, 
     l.default_language_name, 
     l.is_expiration_checked, 
-    l.is_policy_checked 
+    l.is_policy_checked,
+    l.principal_id
 FROM sys.sql_logins AS l
 INNER JOIN sys.databases AS db ON l.default_database_name = db.[name]
 WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`, l.id).
@@ -186,7 +188,8 @@ WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`, l.id).
 			&settings.DefaultDatabaseId,
 			&settings.DefaultLanguage,
 			&settings.CheckPasswordExpiration,
-			&settings.CheckPasswordPolicy)
+			&settings.CheckPasswordPolicy,
+			&settings.PrincipalId)
 
 	settings.MustChangePassword = isMustChange.Valid && isMustChange.Bool
 
