@@ -40,5 +40,6 @@ Read-Only:
 - `id` (String) Login SID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.
 - `must_change_password` (Boolean) When true, password change will be forced on first logon.
 - `name` (String) Login name. Must follow [Regular Identifiers rules](https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers#rules-for-regular-identifiers) and cannot contain `\ `
+- `principal_id` (String) ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.
 
 
