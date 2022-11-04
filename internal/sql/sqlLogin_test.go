@@ -187,9 +187,10 @@ func (s *SqlLoginTestSuite) TestGetSettings() {
 		DefaultLanguage:         "test_lang",
 		CheckPasswordExpiration: true,
 		CheckPasswordPolicy:     false,
+		PrincipalId:             235,
 	}
-	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
-		AddRow(expectedSettings.Name, expectedSettings.Password, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0)
+	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked", "principal_id").
+		AddRow(expectedSettings.Name, expectedSettings.Password, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0, 235)
 	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
 
 	settings := s.login.GetSettings(s.ctx)
@@ -206,9 +207,10 @@ func (s *SqlLoginTestSuite) TestGetSettingsWithoutPasswordHashPerms() {
 		DefaultLanguage:         "test_lang",
 		CheckPasswordExpiration: true,
 		CheckPasswordPolicy:     false,
+		PrincipalId:             46,
 	}
-	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
-		AddRow(expectedSettings.Name, nil, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0)
+	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked", "principal_id").
+		AddRow(expectedSettings.Name, nil, 1, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 1, 0, 46)
 	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
 
 	settings := s.login.GetSettings(s.ctx)
@@ -225,9 +227,10 @@ func (s *SqlLoginTestSuite) TestGetSettingsAzureSql() {
 		DefaultLanguage:         "",
 		CheckPasswordExpiration: false,
 		CheckPasswordPolicy:     false,
+		PrincipalId:             68,
 	}
-	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked").
-		AddRow(expectedSettings.Name, expectedSettings.Password, nil, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 0, 0)
+	rows := newRows("name", "password_hash", "is_must_change", "default_database_id", "default_language_name", "is_expiration_checked", "is_policy_checked", "principal_id").
+		AddRow(expectedSettings.Name, expectedSettings.Password, nil, expectedSettings.DefaultDatabaseId, expectedSettings.DefaultLanguage, 0, 0, 68)
 	s.expectSettingsQuery().WithArgs(s.login.id).WillReturnRows(rows)
 
 	settings := s.login.GetSettings(s.ctx)
@@ -342,7 +345,8 @@ func (s *SqlLoginTestSuite) expectSettingsQuery() *sqlmock.ExpectedQuery {
     db.database_id AS default_database_id, 
     l.default_language_name, 
     l.is_expiration_checked, 
-    l.is_policy_checked 
+    l.is_policy_checked,
+	l.principal_id
 FROM sys.sql_logins AS l
 INNER JOIN sys.databases AS db ON l.default_database_name = db.[name]
 WHERE CONVERT(VARCHAR(85), l.[sid], 1) = @p1`)

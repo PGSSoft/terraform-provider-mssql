@@ -51,7 +51,7 @@ resource "mssql_sql_login" %[1]q {
 			loginAttributes)
 	}
 
-	var loginId, defaultLang, loginDefaultDbId string
+	var loginId, defaultLang, loginDefaultDbId, principalId string
 
 	testCtx.Test(resource.TestCase{
 		Steps: []resource.TestStep{
@@ -59,13 +59,14 @@ resource "mssql_sql_login" %[1]q {
 				Config: newResourceDefaults("test_login", "login1", "Test_password123$"),
 				Check: resource.ComposeTestCheckFunc(
 					testCtx.SqlCheckMaster(func(db *sql.DB) error {
-						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1), DB_ID(default_database_name), default_language_name 
+						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1), DB_ID(default_database_name), default_language_name, [principal_id] 
 													FROM sys.sql_logins 
 													WHERE [name] = 'login1'`).
-							Scan(&loginId, &loginDefaultDbId, &defaultLang)
+							Scan(&loginId, &loginDefaultDbId, &defaultLang, &principalId)
 					}),
 					resource.ComposeAggregateTestCheckFunc(
 						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login", "id", &loginId),
+						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login", "principal_id", &principalId),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login", "name", "login1"),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login", "password", "Test_password123$"),
 						testCtx.SqlCheckMaster(func(db *sql.DB) error {
@@ -101,13 +102,14 @@ resource "mssql_sql_login" %[1]q {
 				}, testCtx.DefaultDBId),
 				Check: resource.ComposeTestCheckFunc(
 					testCtx.SqlCheckMaster(func(db *sql.DB) error {
-						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1) 
+						return db.QueryRow(`	SELECT CONVERT(VARCHAR(85), [sid], 1), [principal_id]
 													FROM sys.sql_logins 
 													WHERE [name] = 'login2'`).
-							Scan(&loginId)
+							Scan(&loginId, &principalId)
 					}),
 					resource.ComposeAggregateTestCheckFunc(
 						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "id", &loginId),
+						resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "principal_id", &principalId),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "name", "login2"),
 						resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "password", "Str0ngPa$$w0rd124"),
 						func(state *terraform.State) error {
@@ -154,6 +156,7 @@ resource "mssql_sql_login" %[1]q {
 				}, testCtx.DefaultDBId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "id", &loginId),
+					resource.TestCheckResourceAttrPtr("mssql_sql_login.test_login_full", "principal_id", &principalId),
 					resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "name", "login3"),
 					resource.TestCheckResourceAttr("mssql_sql_login.test_login_full", "password", "Test_password1234$"),
 					func(state *terraform.State) error {
