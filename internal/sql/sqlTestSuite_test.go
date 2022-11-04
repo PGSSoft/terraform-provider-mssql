@@ -79,3 +79,11 @@ func (s *SqlTestSuite) expectUserNameQuery(id int, name string) {
 func (s *SqlTestSuite) expectEditionQuery(edition SQLEdition) {
 	s.connMock.edition = edition
 }
+
+func (s *SqlTestSuite) expectServerPrincipalNameLookupQuery(id int, name string) {
+	s.connMock.On("lookupServerPrincipalName", mock.Anything, GenericServerPrincipalId(id)).Return(name)
+}
+
+func (s *SqlTestSuite) expectServerPrincipalIdLookupQuery(id int, name string) {
+	s.connMock.On("lookupServerPrincipalId", mock.Anything, name).Return(GenericServerPrincipalId(id))
+}

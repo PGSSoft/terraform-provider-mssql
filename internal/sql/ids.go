@@ -20,6 +20,12 @@ type DatabasePrincipalId interface {
 	UserId | DatabaseRoleId | GenericDatabasePrincipalId
 }
 
+type GenericServerPrincipalId int
+
+type ServerRoleId GenericServerPrincipalId
+
+const EmptyServerPrincipalId GenericServerPrincipalId = -1
+
 type NumericObjectId interface {
 	DatabaseId | DatabasePrincipalId | SchemaId
 }
