@@ -6,6 +6,10 @@ import (
 )
 
 func testListDataSource(testCtx *acctest.TestContext) {
+	if testCtx.IsAzureTest {
+		return
+	}
+
 	testCtx.ExecMasterDB("CREATE SERVER ROLE [test_owner]")
 	defer testCtx.ExecMasterDB("DROP SERVER ROLE [test_owner]")
 

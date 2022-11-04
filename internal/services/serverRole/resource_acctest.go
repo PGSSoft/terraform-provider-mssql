@@ -9,6 +9,10 @@ import (
 )
 
 func testResource(testCtx *acctest.TestContext) {
+	if testCtx.IsAzureTest {
+		return
+	}
+
 	newResource := func(resName string, name string, ownerId string) string {
 		attrs := ""
 		if ownerId != "" {
