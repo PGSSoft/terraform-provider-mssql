@@ -11,22 +11,23 @@ func testResource(testCtx *acctest.TestContext) {
 	roleName := "###MS_ServerStateReader###"
 
 	var memberId string
-	err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [name] = ORIGINAL_LOGIN()").Scan(&memberId)
-	testCtx.Require.NoError(err, "Fetching IDs")
 
-	if !testCtx.IsAzureTest {
+	if testCtx.IsAzureTest {
+		err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [type] IN ('X', 'E')").Scan(&memberId)
+		testCtx.Require.NoError(err, "Fetching IDs")
+	} else {
 		testCtx.ExecMasterDB("CREATE SERVER ROLE [test_role_member]")
 		defer testCtx.ExecMasterDB("DROP SERVER ROLE [test_role_member]")
 		roleName = "test_role_member"
 
 		testCtx.ExecMasterDB("CREATE SERVER ROLE [test_role_member_member]")
 		defer testCtx.ExecDefaultDB("DROP SERVER ROLE [test_role_member_member]")
-		err = testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [name] = 'test_role_member_member'").Scan(&memberId)
+		err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [name] = 'test_role_member_member'").Scan(&memberId)
 		testCtx.Require.NoError(err, "Fetching IDs")
 	}
 
 	var roleId string
-	err = testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", roleName).Scan(&roleId)
+	err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", roleName).Scan(&roleId)
 	testCtx.Require.NoError(err, "Fetching IDs")
 
 	resourceId := fmt.Sprintf("%s/%s", roleId, memberId)
