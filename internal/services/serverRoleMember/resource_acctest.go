@@ -13,7 +13,7 @@ func testResource(testCtx *acctest.TestContext) {
 	var memberId string
 
 	if testCtx.IsAzureTest {
-		testCtx.ExecMasterDB("CREATE SERVER ROLE [%s] FROM EXTERNAL PROVIDER", testCtx.AzureADTestGroup.Name)
+		testCtx.ExecMasterDB("CREATE LOGIN [%s] FROM EXTERNAL PROVIDER", testCtx.AzureADTestGroup.Name)
 		defer testCtx.ExecMasterDB("DROP SERVER ROLE [%s]", testCtx.AzureADTestGroup.Name)
 
 		err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [type] IN ('X', 'E')").Scan(&memberId)
