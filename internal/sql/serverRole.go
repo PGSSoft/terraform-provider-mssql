@@ -17,6 +17,9 @@ type ServerRole interface {
 	GetSettings(ctx context.Context) ServerRoleSettings
 	Rename(ctx context.Context, name string)
 	Drop(ctx context.Context)
+	HasMember(ctx context.Context, id GenericServerPrincipalId) bool
+	AddMember(ctx context.Context, id GenericServerPrincipalId)
+	RemoveMember(ctx context.Context, id GenericServerPrincipalId)
 }
 
 type ServerRoles map[ServerRoleId]ServerRole
@@ -120,5 +123,56 @@ func (s serverRole) Drop(ctx context.Context) {
 		Then(func() {
 			_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP SERVER ROLE [%s]", name))
 			utils.AddError(ctx, "Failed to drop server role", err)
+		})
+}
+
+func (s serverRole) HasMember(ctx context.Context, id GenericServerPrincipalId) bool {
+	conn := s.conn.getSqlConnection(ctx)
+	var result bool
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			err := conn.QueryRowContext(ctx, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2", s.id, id).Err()
+
+			switch err {
+			case sql.ErrNoRows:
+				result = false
+			case nil:
+				result = true
+			default:
+				utils.AddError(ctx, "Failed to check role membership", err)
+			}
+		})
+
+	return result
+}
+
+func (s serverRole) AddMember(ctx context.Context, id GenericServerPrincipalId) {
+	var roleName, memberName string
+	conn := s.conn.getSqlConnection(ctx)
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			roleName = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id))
+			memberName = s.conn.lookupServerPrincipalName(ctx, id)
+		}).
+		Then(func() {
+			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] ADD MEMBER [%s]", roleName, memberName))
+			utils.AddError(ctx, "Failed to add role member", err)
+		})
+}
+
+func (s serverRole) RemoveMember(ctx context.Context, id GenericServerPrincipalId) {
+	var roleName, memberName string
+	conn := s.conn.getSqlConnection(ctx)
+
+	utils.StopOnError(ctx).
+		Then(func() {
+			roleName = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id))
+			memberName = s.conn.lookupServerPrincipalName(ctx, id)
+		}).
+		Then(func() {
+			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
+			utils.AddError(ctx, "Failed to remove role member", err)
 		})
 }

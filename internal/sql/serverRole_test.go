@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/suite"
 	"math/rand"
@@ -88,4 +89,55 @@ func (s *ServerRoleTestSuite) TestDrop() {
 	expectExactExec(s.mock, "DROP SERVER ROLE [test_role]").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	s.role.Drop(s.ctx)
+}
+
+func (s *ServerRoleTestSuite) TestAddMember() {
+	s.expectServerPrincipalNameLookupQuery(int(s.role.id), "test_role")
+	s.expectServerPrincipalNameLookupQuery(243, "test_member")
+	expectExactExec(s.mock, "ALTER SERVER ROLE [test_role] ADD MEMBER [test_member]").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.role.AddMember(s.ctx, 243)
+}
+
+func (s *ServerRoleTestSuite) TestHasMember() {
+	cases := map[string]struct {
+		rows     *sqlmock.Rows
+		expected bool
+	}{
+		"true": {
+			rows:     newRows("no_name").AddRow(1),
+			expected: true,
+		},
+		"false": {
+			rows:     nil,
+			expected: false,
+		},
+	}
+
+	for name, tc := range cases {
+		testCase := tc
+		s.Run(name, func() {
+			exp := expectExactQuery(s.mock, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2").
+				WithArgs(s.role.id, 56)
+
+			if testCase.rows == nil {
+				exp.WillReturnError(sql.ErrNoRows)
+			} else {
+				exp.WillReturnRows(testCase.rows)
+			}
+
+			result := s.role.HasMember(s.ctx, 56)
+
+			s.Equal(testCase.expected, result)
+		})
+
+	}
+}
+
+func (s *ServerRoleTestSuite) TestRemoveMember() {
+	s.expectServerPrincipalNameLookupQuery(int(s.role.id), "test_role")
+	s.expectServerPrincipalNameLookupQuery(19, "test_member")
+	expectExactExec(s.mock, "ALTER SERVER ROLE [test_role] DROP MEMBER [test_member]").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	s.role.RemoveMember(s.ctx, 19)
 }
