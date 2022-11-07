@@ -8,13 +8,13 @@ import (
 )
 
 func testResource(testCtx *acctest.TestContext) {
-	roleName := "###MS_ServerStateReader###"
+	roleName := "##MS_ServerStateReader##"
 
 	var memberId string
 
 	if testCtx.IsAzureTest {
 		testCtx.ExecMasterDB("CREATE LOGIN [%s] FROM EXTERNAL PROVIDER", testCtx.AzureADTestGroup.Name)
-		defer testCtx.ExecMasterDB("DROP SERVER ROLE [%s]", testCtx.AzureADTestGroup.Name)
+		defer testCtx.ExecMasterDB("DROP LOGIN [%s]", testCtx.AzureADTestGroup.Name)
 
 		err := testCtx.GetMasterDBConnection().QueryRow("SELECT [principal_id] FROM sys.server_principals WHERE [type] IN ('X', 'E')").Scan(&memberId)
 		testCtx.Require.NoError(err, "Fetching IDs")

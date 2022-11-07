@@ -1,8 +1,14 @@
 resource "azurerm_mssql_server" "this" {
-  name                = local.name
-  resource_group_name = data.azurerm_resource_group.tests.name
-  location            = data.azurerm_resource_group.tests.location
-  version             = "12.0"
+  name                              = local.name
+  resource_group_name               = data.azurerm_resource_group.tests.name
+  location                          = data.azurerm_resource_group.tests.location
+  version                           = "12.0"
+  primary_user_assigned_identity_id = data.azurerm_user_assigned_identity.server.id
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [data.azurerm_user_assigned_identity.server.id]
+  }
 
   azuread_administrator {
     azuread_authentication_only = true
