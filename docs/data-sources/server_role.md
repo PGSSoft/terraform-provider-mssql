@@ -32,6 +32,16 @@ data "mssql_server_role" "by_id" {
 
 ### Read-Only
 
+- `members` (Attributes Set) Set of role members (see [below for nested schema](#nestedatt--members))
 - `owner_id` (String) ID of another server role or login owning this role. Can be retrieved using `mssql_server_role` or `mssql_sql_login`.
+
+<a id="nestedatt--members"></a>
+### Nested Schema for `members`
+
+Read-Only:
+
+- `id` (String) ID of the member principal
+- `name` (String) Name of the server principal
+- `type` (String) One of: `SQL_LOGIN`, `SERVER_ROLE`
 
 

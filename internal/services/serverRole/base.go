@@ -56,8 +56,8 @@ func (d resourceData) toSettings(ctx context.Context) sql.ServerRoleSettings {
 	return settings
 }
 
-func parseId(ctx context.Context, data resourceData) sql.ServerRoleId {
-	id, err := strconv.Atoi(data.Id.ValueString())
+func parseId(ctx context.Context, id types.String) sql.ServerRoleId {
+	intId, err := strconv.Atoi(id.ValueString())
 	utils.AddError(ctx, "Failed to parse ID", err)
-	return sql.ServerRoleId(id)
+	return sql.ServerRoleId(intId)
 }

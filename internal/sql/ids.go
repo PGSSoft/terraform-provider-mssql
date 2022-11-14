@@ -48,3 +48,11 @@ const (
 	DATABASE_ROLE
 	AZUREAD_USER
 )
+
+type ServerPrincipalType int
+
+const (
+	UNKNOWN ServerPrincipalType = iota
+	SQL_LOGIN
+	SERVER_ROLE
+)
