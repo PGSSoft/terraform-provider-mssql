@@ -26,7 +26,7 @@ func (s service) Resources() []func() sdkresource.ResourceWithConfigure {
 
 func (s service) DataSources() []func() sdkdatasource.DataSourceWithConfigure {
 	return []func() sdkdatasource.DataSourceWithConfigure{
-		datasource.NewDataSource[resourceData](&dataSource{}),
+		datasource.NewDataSource[dataSourceData](&dataSource{}),
 		datasource.NewDataSource[listDataSourceData](&listDataSource{}),
 	}
 }

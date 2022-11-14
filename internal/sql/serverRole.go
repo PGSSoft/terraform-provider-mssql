@@ -12,6 +12,14 @@ type ServerRoleSettings struct {
 	OwnerId GenericServerPrincipalId
 }
 
+type ServerRoleMember struct {
+	Id   GenericServerPrincipalId
+	Name string
+	Type ServerPrincipalType
+}
+
+type ServerRoleMembers map[GenericServerPrincipalId]ServerRoleMember
+
 type ServerRole interface {
 	GetId(ctx context.Context) ServerRoleId
 	GetSettings(ctx context.Context) ServerRoleSettings
@@ -20,6 +28,7 @@ type ServerRole interface {
 	HasMember(ctx context.Context, id GenericServerPrincipalId) bool
 	AddMember(ctx context.Context, id GenericServerPrincipalId)
 	RemoveMember(ctx context.Context, id GenericServerPrincipalId)
+	GetMembers(ctx context.Context) ServerRoleMembers
 }
 
 type ServerRoles map[ServerRoleId]ServerRole
@@ -175,4 +184,42 @@ func (s serverRole) RemoveMember(ctx context.Context, id GenericServerPrincipalI
 			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
 			utils.AddError(ctx, "Failed to remove role member", err)
 		})
+}
+
+func (s serverRole) GetMembers(ctx context.Context) ServerRoleMembers {
+	conn := s.conn.getSqlConnection(ctx)
+	if utils.HasError(ctx) {
+		return nil
+	}
+
+	result := ServerRoleMembers{}
+	rs, err := conn.QueryContext(ctx, `
+SELECT [principal_id], [name], [type] FROM sys.server_role_members
+INNER JOIN sys.server_principals ON [member_principal_id] = [principal_id]
+WHERE [role_principal_id]=@p1 AND [type] IN ('S', 'R')`, s.id)
+
+	switch err {
+	case sql.ErrNoRows:
+		return result
+	case nil:
+		for rs.Next() {
+			var mType string
+			member := ServerRoleMember{Type: UNKNOWN}
+			err := rs.Scan(&member.Id, &member.Name, &mType)
+			utils.AddError(ctx, "Failed to parse member result", err)
+
+			switch mType {
+			case "S":
+				member.Type = SQL_LOGIN
+			case "R":
+				member.Type = SERVER_ROLE
+			}
+
+			result[member.Id] = member
+		}
+	default:
+		utils.AddError(ctx, "Failed to retrieve role members", err)
+	}
+
+	return result
 }

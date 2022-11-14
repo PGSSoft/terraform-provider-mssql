@@ -37,7 +37,7 @@ func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
 }
 
 func (r res) Read(ctx context.Context, req resource.ReadRequest[resourceData], resp *resource.ReadResponse[resourceData]) {
-	id := parseId(ctx, req.State)
+	id := parseId(ctx, req.State.Id)
 	var role sql.ServerRole
 
 	req.
@@ -59,7 +59,7 @@ func (r res) Create(ctx context.Context, req resource.CreateRequest[resourceData
 }
 
 func (r res) Update(ctx context.Context, req resource.UpdateRequest[resourceData], resp *resource.UpdateResponse[resourceData]) {
-	id := parseId(ctx, req.Plan)
+	id := parseId(ctx, req.Plan.Id)
 	var role sql.ServerRole
 
 	req.
@@ -69,7 +69,7 @@ func (r res) Update(ctx context.Context, req resource.UpdateRequest[resourceData
 }
 
 func (r res) Delete(ctx context.Context, req resource.DeleteRequest[resourceData], resp *resource.DeleteResponse[resourceData]) {
-	id := parseId(ctx, req.State)
+	id := parseId(ctx, req.State.Id)
 	var role sql.ServerRole
 
 	req.

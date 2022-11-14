@@ -141,3 +141,33 @@ func (s *ServerRoleTestSuite) TestRemoveMember() {
 
 	s.role.RemoveMember(s.ctx, 19)
 }
+
+func (s *ServerRoleTestSuite) TestGetMembers() {
+	expectExactQuery(s.mock, `
+SELECT [principal_id], [name], [type] FROM sys.server_role_members
+INNER JOIN sys.server_principals ON [member_principal_id] = [principal_id]
+WHERE [role_principal_id]=@p1 AND [type] IN ('S', 'R')`).
+		WithArgs(s.role.id).
+		WillReturnRows(newRows("principal_id", "name", "type").AddRow(24, "role_name", "R").AddRow(64, "login_name", "S").AddRow(13, "unknown_name", "C"))
+
+	members := s.role.GetMembers(s.ctx)
+
+	expected := ServerRoleMembers{
+		24: {
+			Id:   24,
+			Name: "role_name",
+			Type: SERVER_ROLE,
+		},
+		64: {
+			Id:   64,
+			Name: "login_name",
+			Type: SQL_LOGIN,
+		},
+		13: {
+			Id:   13,
+			Name: "unknown_name",
+			Type: UNKNOWN,
+		},
+	}
+	s.Equal(expected, members)
+}
