@@ -10,11 +10,4 @@ data "azurerm_resource_group" "tests" {
 
 data "http" "publicip_address" {
   url = "https://api.ipify.org/"
-
-  lifecycle {
-    postcondition {
-      condition = 200 == self.status_code
-      error_message = "Failed to get public IP"
-    }
-  }
 }
