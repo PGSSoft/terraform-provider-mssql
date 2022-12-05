@@ -145,7 +145,13 @@ func (db *database) Drop(ctx context.Context) {
 }
 
 func (db *database) Query(ctx context.Context, script string) []map[string]string {
-	rows, err := db.connect(ctx).QueryContext(ctx, script)
+	conn := db.connect(ctx)
+
+	if conn == nil {
+		return nil
+	}
+
+	rows, err := conn.QueryContext(ctx, script)
 
 	if err != nil {
 		utils.AddError(ctx, "Failed to execute get state script", err)

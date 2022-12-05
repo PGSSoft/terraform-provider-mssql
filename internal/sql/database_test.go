@@ -171,6 +171,15 @@ func (s *DatabaseTestSuite) TestQuery() {
 	s.Assert().Equal("true", res[1]["col_y"])
 }
 
+func (s *DatabaseTestSuite) TestQueryConnectionFailure() {
+	s.expectDatabaseSettingQuery().WithArgs(s.db.id).WillReturnError(errors.New("test error"))
+
+	res := s.db.Query(s.ctx, "TEST QUERY")
+
+	s.Assert().Nil(res)
+	s.errExpected = true
+}
+
 func (s *DatabaseTestSuite) TestGetPermissions() {
 	const dbName = "test_db_name"
 	s.expectDatabaseSettingQuery().WithArgs(s.db.id).WillReturnRows(newRows("name", "collation_name").AddRow(dbName, ""))
