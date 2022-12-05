@@ -8,7 +8,10 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"sync"
 )
+
+var resLock sync.Mutex
 
 type res struct{}
 
@@ -34,6 +37,9 @@ func (r *res) GetSchema(context.Context) tfsdk.Schema {
 }
 
 func (r *res) Create(ctx context.Context, req resource.CreateRequest[resourceData], resp *resource.CreateResponse[resourceData]) {
+	resLock.Lock()
+	defer resLock.Unlock()
+
 	var db sql.Database
 
 	req.
@@ -61,6 +67,9 @@ func (r *res) Read(ctx context.Context, req resource.ReadRequest[resourceData], 
 }
 
 func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceData], resp *resource.UpdateResponse[resourceData]) {
+	resLock.Lock()
+	defer resLock.Unlock()
+
 	var db sql.Database
 
 	req.
@@ -81,6 +90,9 @@ func (r *res) Update(ctx context.Context, req resource.UpdateRequest[resourceDat
 }
 
 func (r *res) Delete(ctx context.Context, req resource.DeleteRequest[resourceData], _ *resource.DeleteResponse[resourceData]) {
+	resLock.Lock()
+	defer resLock.Unlock()
+
 	var dbId sql.DatabaseId
 	var db sql.Database
 
