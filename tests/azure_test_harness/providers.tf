@@ -14,4 +14,3 @@ provider "azurerm" {
   features {}
 }
 
-provider "publicip" {}

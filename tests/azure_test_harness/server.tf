@@ -20,8 +20,8 @@ resource "azurerm_mssql_server" "this" {
 resource "azurerm_mssql_firewall_rule" "self" {
   name             = "test-runner"
   server_id        = azurerm_mssql_server.this.id
-  start_ip_address = data.publicip_address.default.ip
-  end_ip_address   = data.publicip_address.default.ip
+  start_ip_address = local.public_ip
+  end_ip_address   = local.public_ip
 }
 
 resource "azurerm_mssql_elasticpool" "this" {
