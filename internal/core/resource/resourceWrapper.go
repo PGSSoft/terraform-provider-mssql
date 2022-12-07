@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
@@ -60,7 +61,14 @@ func (r *resourceWrapper[T]) Create(ctx context.Context, request resource.Create
 	req := CreateRequest[T]{}
 	req.monad = utils.StopOnError(ctx).
 		Then(func() { req.Conn = r.ctx.ConnFactory(ctx) }).
-		Then(func() { req.Plan = utils.GetData[T](ctx, request.Plan) })
+		Then(func() {
+			obj := utils.GetData[types.Object](ctx, request.Plan)
+			diags := obj.As(ctx, &req.Plan, types.ObjectAsOptions{
+				UnhandledUnknownAsEmpty: true,
+				UnhandledNullAsEmpty:    true,
+			})
+			utils.AppendDiagnostics(ctx, diags...)
+		})
 
 	resp := CreateResponse[T]{}
 	r.r.Create(ctx, req, &resp)

@@ -29,7 +29,7 @@ type SqlLoginId GenericServerPrincipalId
 const EmptyServerPrincipalId GenericServerPrincipalId = -1
 
 type NumericObjectId interface {
-	DatabaseId | DatabasePrincipalId | SchemaId
+	DatabaseId | DatabasePrincipalId | SchemaId | GenericServerPrincipalId
 }
 
 type StringObjectId interface {
