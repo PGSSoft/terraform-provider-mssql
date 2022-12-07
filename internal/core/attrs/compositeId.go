@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+type compIdType interface {
+	getElementsCount() int
+}
+
 func CompositeIdType(elemCount int) attr.Type {
 	var t attr.Type
 	t = compositeIdType{elemCount: elemCount, valueFactory: func(id CompositeId) attr.Value {
@@ -59,8 +63,8 @@ func (t compositeIdType) ValueType(context.Context) attr.Value {
 }
 
 func (t compositeIdType) Equal(t2 attr.Type) bool {
-	t2composite, ok := t2.(compositeIdType)
-	return ok && t2composite.elemCount == t.elemCount
+	t2composite, ok := t2.(compIdType)
+	return ok && t2composite.getElementsCount() == t.elemCount
 }
 
 func (t compositeIdType) String() string {
@@ -71,9 +75,17 @@ func (t compositeIdType) ApplyTerraform5AttributePathStep(tftypes.AttributePathS
 	return nil, nil
 }
 
+func (t compositeIdType) getElementsCount() int {
+	return t.elemCount
+}
+
 func CompositeIdValue(elems ...string) CompositeId {
 	t := CompositeIdType(len(elems))
 	return CompositeId{elems: elems, attrType: &t}
+}
+
+type compId interface {
+	getElements() []string
 }
 
 type CompositeId struct {
@@ -100,13 +112,13 @@ func (id CompositeId) ToTerraformValue(context.Context) (tftypes.Value, error) {
 }
 
 func (id CompositeId) Equal(value attr.Value) bool {
-	id2, ok := value.(CompositeId)
-	if !ok || len(id2.elems) != len(id.elems) {
+	id2, ok := value.(compId)
+	if !ok || len(id2.getElements()) != len(id.elems) {
 		return false
 	}
 
 	for i, v := range id.elems {
-		if v != id2.elems[i] {
+		if v != id2.getElements()[i] {
 			return false
 		}
 	}
@@ -134,4 +146,8 @@ func (id CompositeId) GetInt(ctx context.Context, i int) int {
 	res, err := strconv.Atoi(id.GetString(i))
 	utils.AddError(ctx, "Invalid numeric ID value", err)
 	return res
+}
+
+func (id CompositeId) getElements() []string {
+	return id.elems
 }
