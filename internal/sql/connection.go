@@ -17,6 +17,13 @@ import (
 
 var azureSQLEditionPattern = regexp.MustCompile("^SQL Azure.*")
 
+type ServerPermission struct {
+	Name            string
+	WithGrantOption bool
+}
+
+type ServerPermissions map[string]ServerPermission
+
 type ConnectionAuth interface {
 	configure(context.Context, *url.URL) diag.Diagnostics
 	getDriverName() string
@@ -30,6 +37,9 @@ type ConnectionDetails struct {
 
 type Connection interface {
 	IsAzure(context.Context) bool
+	GetPermissions(ctx context.Context, principalId GenericServerPrincipalId) ServerPermissions
+	GrantPermission(ctx context.Context, principalId GenericServerPrincipalId, permission ServerPermission)
+	RevokePermission(ctx context.Context, principalId GenericServerPrincipalId, permission string)
 	exec(_ context.Context, query string, args ...any) sql.Result
 	getConnectionDetails(context.Context) ConnectionDetails
 	getSqlConnection(context.Context) *sql.DB
@@ -67,6 +77,50 @@ func (c *connection) IsAzure(ctx context.Context) bool {
 		utils.AddError(ctx, "Failed to determine server edition", err)
 	}
 	return azureSQLEditionPattern.MatchString(edition)
+}
+
+func (c *connection) GetPermissions(ctx context.Context, principalId GenericServerPrincipalId) ServerPermissions {
+	res, err := c.conn.QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1", principalId)
+	perms := ServerPermissions{}
+
+	switch err {
+	case sql.ErrNoRows:
+	case nil:
+		for res.Next() {
+			perm := ServerPermission{}
+			var state string
+			err := res.Scan(&perm.Name, &state)
+			utils.AddError(ctx, "Failed to parse permissions result", err)
+			perm.WithGrantOption = state == "W"
+			perms[perm.Name] = perm
+		}
+	default:
+		utils.AddError(ctx, "Failed to fetch server permissions", err)
+	}
+
+	return perms
+}
+
+func (c *connection) GrantPermission(ctx context.Context, principalId GenericServerPrincipalId, permission ServerPermission) {
+	name := c.lookupServerPrincipalName(ctx, principalId)
+	if utils.HasError(ctx) {
+		return
+	}
+
+	stat := fmt.Sprintf("GRANT %s TO [%s]", permission.Name, name)
+	if permission.WithGrantOption {
+		stat += " WITH GRANT OPTION"
+	}
+	c.exec(ctx, stat)
+}
+
+func (c *connection) RevokePermission(ctx context.Context, principalId GenericServerPrincipalId, permission string) {
+	name := c.lookupServerPrincipalName(ctx, principalId)
+	if utils.HasError(ctx) {
+		return
+	}
+
+	c.exec(ctx, fmt.Sprintf("REVOKE %s FROM [%s] CASCADE", permission, name))
 }
 
 func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, diag.Diagnostics) {

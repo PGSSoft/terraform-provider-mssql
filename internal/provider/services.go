@@ -11,6 +11,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/schema"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/schemaPermission"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/script"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/services/serverPermission"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/serverRole"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/serverRoleMember"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/sqlLogin"
@@ -32,6 +33,7 @@ func Services() []core.Service {
 		schemaPermission.Service(),
 		serverRole.Service(),
 		serverRoleMember.Service(),
+		serverPermission.Service(),
 
 		script.Service(),
 	}

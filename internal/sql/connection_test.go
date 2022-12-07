@@ -76,6 +76,76 @@ func (s *ConnectionTestSuite) TestGetConnectionStringReturnsParamsSetByAuthProvi
 	s.True(diags.Contains(testDiag), "diagnostics")
 }
 
+func TestGrantPermission(t *testing.T) {
+	cases := map[string]struct {
+		stat string
+		perm ServerPermission
+	}{
+		"without_grant": {
+			stat: "GRANT TEST PERMISSION TO [test_user]",
+			perm: ServerPermission{Name: "TEST PERMISSION"},
+		},
+		"with_grant": {
+			stat: "GRANT TEST PERMISSION GRANT TO [test_user] WITH GRANT OPTION",
+			perm: ServerPermission{Name: "TEST PERMISSION GRANT", WithGrantOption: true},
+		},
+	}
+
+	for name, tc := range cases {
+		testCase := tc
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err, "SQL mock")
+			expectExactQuery(mock, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1").
+				WithArgs(12).
+				WillReturnRows(newRows("name").AddRow("test_user"))
+			expectExactExec(mock, testCase.stat).WillReturnResult(sqlmock.NewResult(0, 1))
+			conn := connection{conn: db}
+			diags := diag.Diagnostics{}
+
+			conn.GrantPermission(utils.WithDiagnostics(context.Background(), &diags), 12, testCase.perm)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Len(t, diags, 0)
+		})
+	}
+}
+
+func TestGetPermissions(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err, "SQL mock")
+	expectExactQuery(mock, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1").
+		WithArgs(24).
+		WillReturnRows(newRows("permission_name", "state").AddRow("TEST PERM", "G").AddRow("TEST PERM2", "W"))
+	conn := connection{conn: db}
+	diags := diag.Diagnostics{}
+
+	perms := conn.GetPermissions(utils.WithDiagnostics(context.Background(), &diags), 24)
+
+	assert.Len(t, diags, 0)
+	require.NoError(t, mock.ExpectationsWereMet())
+	assert.Equal(t, ServerPermissions{
+		"TEST PERM":  {Name: "TEST PERM"},
+		"TEST PERM2": {Name: "TEST PERM2", WithGrantOption: true},
+	}, perms)
+}
+
+func TestRevokePermission(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err, "SQL mock")
+	expectExactQuery(mock, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1").
+		WithArgs(5).
+		WillReturnRows(newRows("name").AddRow("test_user"))
+	expectExactExec(mock, "REVOKE TEST PERM RVK FROM [test_user] CASCADE").WillReturnResult(sqlmock.NewResult(0, 1))
+	conn := connection{conn: db}
+	diags := diag.Diagnostics{}
+
+	conn.RevokePermission(utils.WithDiagnostics(context.Background(), &diags), 5, "TEST PERM RVK")
+
+	assert.Len(t, diags, 0)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestIsAzure(t *testing.T) {
 	cases := map[string]bool{
 		"Enterprise Edition":  false,

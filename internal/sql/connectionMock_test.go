@@ -26,6 +26,18 @@ func (c *connectionMock) IsAzure(ctx context.Context) bool {
 	return c.edition == EDITION_AZURE_SQL
 }
 
+func (c *connectionMock) GetPermissions(ctx context.Context, principalId GenericServerPrincipalId) ServerPermissions {
+	return c.Called(ctx, principalId).Get(0).(ServerPermissions)
+}
+
+func (c *connectionMock) GrantPermission(ctx context.Context, principalId GenericServerPrincipalId, permission ServerPermission) {
+	c.Called(ctx, principalId, permission)
+}
+
+func (c *connectionMock) RevokePermission(ctx context.Context, principalId GenericServerPrincipalId, permission string) {
+	c.Called(ctx, principalId, permission)
+}
+
 func (c *connectionMock) exec(ctx context.Context, query string, args ...any) sql.Result {
 	res, err := c.db.ExecContext(ctx, query, args...)
 	if err != nil {
