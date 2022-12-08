@@ -9,10 +9,6 @@ func TestSqlIdentifierValidate(t *testing.T) {
 	const validationErrSummary = "Invalid SQL identifier"
 
 	testCases := map[string]validatorTestCase{
-		"Wrong type": {
-			val:             types.Int64Value(2),
-			expectedSummary: "Value Conversion Error",
-		},
 		"Unknown": {
 			val: types.StringUnknown(),
 		},

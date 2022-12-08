@@ -7,8 +7,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strconv"
 	"strings"
@@ -26,29 +27,28 @@ func (r res) GetName() string {
 	return "server_role_member"
 }
 
-func (r res) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: "Manages server role membership.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": common.ToResourceId(tfsdk.Attribute{
-				MarkdownDescription: "`<role_id>/<member_id>`. Role and member IDs can be retrieved using `mssql_server_role` or `mssql_sql_login`",
-				Type:                types.StringType,
-			}),
-			"role_id": {
-				MarkdownDescription: "ID of the server role. Can be retrieved using `mssql_server_role`",
-				Type:                types.StringType,
-				Required:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					sdkresource.RequiresReplace(),
-				},
+func (r res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages server role membership."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "`<role_id>/<member_id>`. Role and member IDs can be retrieved using `mssql_server_role` or `mssql_sql_login`",
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			"member_id": {
-				MarkdownDescription: "ID of the member. Can be retrieved using `mssql_server_role` or `mssql_sql_login`",
-				Type:                types.StringType,
-				Required:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					sdkresource.RequiresReplace(),
-				},
+		},
+		"role_id": schema.StringAttribute{
+			MarkdownDescription: "ID of the server role. Can be retrieved using `mssql_server_role`",
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"member_id": schema.StringAttribute{
+			MarkdownDescription: "ID of the member. Can be retrieved using `mssql_server_role` or `mssql_sql_login`",
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
 		},
 	}

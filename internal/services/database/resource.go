@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
-	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"sync"
 )
@@ -19,19 +21,25 @@ func (r *res) GetName() string {
 	return "database"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		Description: "Manages single database.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":   common2.ToResourceId(attributes["id"]),
-			"name": common2.ToRequired(attributes["name"]),
-			"collation": func() tfsdk.Attribute {
-				attr := attributes["collation"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.Description += " Defaults to SQL Server instance's default collation."
-				return attr
-			}(),
+func (r *res) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages single database."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Required:            true,
+			Validators:          validators.DatabaseNameValidators,
+		},
+		"collation": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["collation"] + " Defaults to SQL Server instance's default collation.",
+			Optional:            true,
+			Computed:            true,
 		},
 	}
 }

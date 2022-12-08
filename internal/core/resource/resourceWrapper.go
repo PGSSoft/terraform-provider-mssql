@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -16,6 +14,7 @@ var (
 	_ resource.ResourceWithConfigure      = &resourceWrapper[any]{}
 	_ resource.ResourceWithImportState    = &resourceWrapper[any]{}
 	_ resource.ResourceWithValidateConfig = &resourceWrapper[any]{}
+	_ resource.ResourceWithSchema         = &resourceWrapper[any]{}
 )
 
 func NewResource[T any](r Resource[T]) func() resource.ResourceWithConfigure {
@@ -50,9 +49,10 @@ func (r *resourceWrapper[T]) Configure(_ context.Context, request resource.Confi
 	r.ctx = resourceCtx
 }
 
-func (r *resourceWrapper[T]) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	diags := diag.Diagnostics{}
-	return r.r.GetSchema(utils.WithDiagnostics(ctx, &diags)), diags
+func (r *resourceWrapper[T]) Schema(ctx context.Context, request resource.SchemaRequest, response *resource.SchemaResponse) {
+	resp := SchemaResponse{}
+	r.r.Schema(utils.WithDiagnostics(ctx, &response.Diagnostics), SchemaRequest{}, &resp)
+	response.Schema = resp.Schema
 }
 
 func (r *resourceWrapper[T]) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {

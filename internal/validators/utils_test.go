@@ -2,26 +2,26 @@ package validators
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 type validatorTestCase struct {
-	val             attr.Value
+	val             types.String
 	expectedSummary string
 }
 
-func validatorTests(testCases map[string]validatorTestCase, validator tfsdk.AttributeValidator, t *testing.T) {
+func validatorTests(testCases map[string]validatorTestCase, validatorImpl validator.String, t *testing.T) {
 	for name, tc := range testCases {
 		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
-			request := tfsdk.ValidateAttributeRequest{AttributeConfig: tc.val}
-			response := tfsdk.ValidateAttributeResponse{}
+			request := validator.StringRequest{ConfigValue: tc.val}
+			response := validator.StringResponse{}
 
-			validator.Validate(context.Background(), request, &response)
+			validatorImpl.ValidateString(context.Background(), request, &response)
 
 			if tc.expectedSummary == "" {
 				assert.Falsef(t, response.Diagnostics.HasError(), "Unexpected validation errrors: %v", response.Diagnostics)

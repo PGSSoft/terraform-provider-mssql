@@ -4,12 +4,15 @@ import (
 	"context"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"strconv"
 	"strings"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 type res struct{}
@@ -18,14 +21,32 @@ func (r *res) GetName() string {
 	return "sql_user"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		Description: "Manages database-level user, based on SQL login.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":          common2.ToResourceId(attributes["id"]),
-			"name":        common2.ToRequired(attributes["name"]),
-			"database_id": common2.DatabaseIdResourceAttribute,
-			"login_id":    common2.ToRequired(attributes["login_id"]),
+func (r *res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages database-level user, based on SQL login."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Required:            true,
+			Validators:          validators.UserNameValidators,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common2.AttributeDescriptions["database_id"] + " Defaults to ID of `master`.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"login_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["login_id"],
+			Required:            true,
 		},
 	}
 }

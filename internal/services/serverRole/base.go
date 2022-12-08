@@ -6,27 +6,9 @@ import (
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strconv"
 )
-
-var attributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "Role principal ID.",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: fmt.Sprintf("Role name. %s and cannot be longer than 128 chars.", common2.RegularIdentifiersDoc),
-		Type:                types.StringType,
-		Validators:          validators.UserNameValidators,
-	},
-	"owner_id": {
-		MarkdownDescription: "ID of another server role or login owning this role. Can be retrieved using `mssql_server_role` or `mssql_sql_login`.",
-		Type:                types.StringType,
-	},
-}
 
 var attrDescriptions = map[string]string{
 	"id":       "Role principal ID.",

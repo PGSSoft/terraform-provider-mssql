@@ -30,7 +30,7 @@ func (d *dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp 
 			MarkdownDescription: attrDescriptions["name"],
 			Optional:            true,
 			Computed:            true,
-			Validators:          validators.UserNameStringValidators,
+			Validators:          validators.UserNameValidators,
 		},
 		"database_id": schema.StringAttribute{
 			MarkdownDescription: common2.AttributeDescriptions["database_id"],

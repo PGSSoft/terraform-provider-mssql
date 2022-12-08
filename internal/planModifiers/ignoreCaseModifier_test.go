@@ -2,8 +2,7 @@ package planModifiers
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -11,41 +10,34 @@ import (
 
 func TestIgnoreCaseModifier(t *testing.T) {
 	cases := map[string]struct {
-		request       tfsdk.ModifyAttributePlanRequest
-		expectedValue attr.Value
+		request       planmodifier.StringRequest
+		expectedValue types.String
 	}{
 		"empty state": {
-			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.StringUnknown(),
-				AttributePlan:  types.StringValue("plannedValue"),
+			request: planmodifier.StringRequest{
+				StateValue: types.StringUnknown(),
+				PlanValue:  types.StringValue("plannedValue"),
 			},
 			expectedValue: types.StringValue("plannedValue"),
 		},
 		"empty plan": {
-			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.StringValue("stateValue"),
-				AttributePlan:  types.StringNull(),
+			request: planmodifier.StringRequest{
+				StateValue: types.StringValue("stateValue"),
+				PlanValue:  types.StringNull(),
 			},
 			expectedValue: types.StringNull(),
 		},
-		"non string": {
-			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.Int64Value(246),
-				AttributePlan:  types.Int64Value(45763),
-			},
-			expectedValue: types.Int64Value(45763),
-		},
 		"matching case": {
-			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.StringValue("matchingCase"),
-				AttributePlan:  types.StringValue("matchingCase"),
+			request: planmodifier.StringRequest{
+				StateValue: types.StringValue("matchingCase"),
+				PlanValue:  types.StringValue("matchingCase"),
 			},
 			expectedValue: types.StringValue("matchingCase"),
 		},
 		"not matching case": {
-			request: tfsdk.ModifyAttributePlanRequest{
-				AttributeState: types.StringValue("NotMatchingCase"),
-				AttributePlan:  types.StringValue("NOTMATCHINGCASE"),
+			request: planmodifier.StringRequest{
+				StateValue: types.StringValue("NotMatchingCase"),
+				PlanValue:  types.StringValue("NOTMATCHINGCASE"),
 			},
 			expectedValue: types.StringValue("NotMatchingCase"),
 		},
@@ -54,11 +46,11 @@ func TestIgnoreCaseModifier(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			modifier := IgnoreCase()
-			response := tfsdk.ModifyAttributePlanResponse{AttributePlan: tc.request.AttributePlan}
+			response := planmodifier.StringResponse{PlanValue: tc.request.PlanValue}
 
-			modifier.Modify(context.Background(), tc.request, &response)
+			modifier.PlanModifyString(context.Background(), tc.request, &response)
 
-			assert.Equal(t, tc.expectedValue, response.AttributePlan)
+			assert.Equal(t, tc.expectedValue, response.PlanValue)
 		})
 	}
 }

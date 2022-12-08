@@ -29,7 +29,7 @@ func (d *dataSource) Schema(ctx context.Context, req datasource.SchemaRequest, r
 		},
 		"name": schema.StringAttribute{
 			MarkdownDescription: attrDescriptions["name"],
-			Validators:          validators.UserNameStringValidators,
+			Validators:          validators.UserNameValidators,
 			Optional:            true,
 			Computed:            true,
 		},

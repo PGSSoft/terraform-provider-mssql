@@ -9,10 +9,6 @@ func TestStringLengthValidate(t *testing.T) {
 	const validationErrSummary = "Invalid String Length"
 
 	testCases := map[string]validatorTestCase{
-		"Wrong type": {
-			val:             types.Int64Value(2),
-			expectedSummary: "Value Conversion Error",
-		},
 		"Unknown": {
 			val: types.StringUnknown(),
 		},

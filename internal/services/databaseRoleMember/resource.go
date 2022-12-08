@@ -5,13 +5,20 @@ import (
 	"errors"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+type resourceData struct {
+	Id       types.String `tfsdk:"id"`
+	RoleId   types.String `tfsdk:"role_id"`
+	MemberId types.String `tfsdk:"member_id"`
+}
 
 type res struct{}
 
@@ -19,20 +26,29 @@ func (r *res) GetName() string {
 	return "database_role_member"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
-	annotatePrincipalId := func(attrName string) tfsdk.Attribute {
-		attr := attributes[attrName]
-		attr.Required = true
-		attr.PlanModifiers = tfsdk.AttributePlanModifiers{sdkresource.RequiresReplace()}
-		return attr
-	}
-
-	return tfsdk.Schema{
-		Description: "Manages database role membership.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":        common2.ToResourceId(attributes["id"]),
-			"role_id":   annotatePrincipalId("role_id"),
-			"member_id": annotatePrincipalId("member_id"),
+func (r *res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages database role membership."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "`<database_id>/<role_id>/<member_id>`. Role and member IDs can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<name>')`",
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"role_id": schema.StringAttribute{
+			MarkdownDescription: "`<database_id>/<role_id>`",
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"member_id": schema.StringAttribute{
+			MarkdownDescription: "Can be either user or role ID in format `<database_id>/<member_id>`. Can be retrieved using `mssql_sql_user` or `mssql_database_member`.",
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
 		},
 	}
 }

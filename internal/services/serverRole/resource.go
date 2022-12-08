@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	sdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -17,21 +18,28 @@ func (r res) GetName() string {
 	return "server_role"
 }
 
-func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: "Manages server-level role.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":   common.ToResourceId(attributes["id"]),
-			"name": common.ToRequired(attributes["name"]),
-			"owner_id": func() tfsdk.Attribute {
-				attr := attributes["owner_id"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.PlanModifiers = tfsdk.AttributePlanModifiers{
-					sdkresource.RequiresReplace(),
-				}
-				return attr
-			}(),
+func (r res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages server-level role."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Required:            true,
+			Validators:          validators.UserNameValidators,
+		},
+		"owner_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["owner_id"],
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplaceIfConfigured(),
+			},
 		},
 	}
 }
