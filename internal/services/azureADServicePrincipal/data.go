@@ -7,7 +7,8 @@ import (
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strings"
 )
@@ -18,18 +19,28 @@ func (d *dataSource) GetName() string {
 	return "azuread_service_principal"
 }
 
-func (d *dataSource) GetSchema(_ context.Context) tfsdk.Schema {
-	attrs := map[string]tfsdk.Attribute{}
-	for n, attr := range attributes {
-		attr.Required = n == "database_id"
-		attr.Optional = n != "id" && !attr.Required
-		attr.Computed = !attr.Required
-		attrs[n] = attr
-	}
-
-	return tfsdk.Schema{
-		Description: "Obtains information about single Azure AD Service Principal database user.",
-		Attributes:  attrs,
+func (d *dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.Description = "Obtains information about single Azure AD Service Principal database user."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Optional:            true,
+			Computed:            true,
+			Validators:          validators.UserNameValidators,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common2.AttributeDescriptions["database_id"],
+			Required:            true,
+		},
+		"client_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["client_id"],
+			Optional:            true,
+			Computed:            true,
+		},
 	}
 }
 

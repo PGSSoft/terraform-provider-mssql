@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// To ensure validator fully satisfies framework interfaces
-var _ tfsdk.AttributeValidator = stringLengthValidator{}
+var (
+	// To ensure validator fully satisfies framework interfaces
+	_ validator.String = stringLengthValidator{}
+)
 
 type stringLengthValidator struct {
 	Min int
@@ -24,24 +25,17 @@ func (s stringLengthValidator) MarkdownDescription(context.Context) string {
 	return fmt.Sprintf("string length must be between `%d` and `%d`", s.Min, s.Max)
 }
 
-func (s stringLengthValidator) Validate(ctx context.Context, request tfsdk.ValidateAttributeRequest, response *tfsdk.ValidateAttributeResponse) {
-	var str types.String
-	diags := tfsdk.ValueAs(ctx, request.AttributeConfig, &str)
-	if response.Diagnostics.Append(diags...); diags.HasError() {
+func (s stringLengthValidator) ValidateString(ctx context.Context, request validator.StringRequest, response *validator.StringResponse) {
+	if !common.IsAttrSet(request.ConfigValue) {
 		return
 	}
 
-	if !common.IsAttrSet(str) {
-		return
-	}
-
-	strLen := len(str.ValueString())
+	strLen := len(request.ConfigValue.ValueString())
 
 	if strLen < s.Min || strLen > s.Max {
 		response.Diagnostics.AddAttributeError(
-			request.AttributePath,
+			request.Path,
 			"Invalid String Length",
-			fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), str.ValueString(), strLen),
-		)
+			fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), request.ConfigValue.ValueString(), strLen))
 	}
 }

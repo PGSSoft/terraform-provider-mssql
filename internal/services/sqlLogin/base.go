@@ -4,45 +4,18 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var attributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "Login SID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: fmt.Sprintf("Login name. %s and cannot contain `\\ `", common.RegularIdentifiersDoc),
-		Type:                types.StringType,
-		Validators:          validators.LoginNameValidators,
-	},
-	"must_change_password": {
-		MarkdownDescription: "When true, password change will be forced on first logon.",
-		Type:                types.BoolType,
-	},
-	"default_database_id": {
-		MarkdownDescription: "ID of login's default DB. The ID can be retrieved using `mssql_database` data resource.",
-		Type:                types.StringType,
-	},
-	"default_language": {
-		Description: "Default language assigned to login.",
-		Type:        types.StringType,
-	},
-	"check_password_expiration": {
-		MarkdownDescription: "When `true`, password expiration policy is enforced for this login.",
-		Type:                types.BoolType,
-	},
-	"check_password_policy": {
-		MarkdownDescription: "When `true`, the Windows password policies of the computer on which SQL Server is running are enforced on this login.",
-		Type:                types.BoolType,
-	},
-	"principal_id": {
-		MarkdownDescription: "ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.",
-		Type:                types.StringType,
-	},
+var attrDescriptions = map[string]string{
+	"id":                        "Login SID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.",
+	"name":                      fmt.Sprintf("Login name. %s and cannot contain `\\ `", common.RegularIdentifiersDoc),
+	"must_change_password":      "When true, password change will be forced on first logon.",
+	"default_database_id":       "ID of login's default DB. The ID can be retrieved using `mssql_database` data resource.",
+	"default_language":          "Default language assigned to login.",
+	"check_password_expiration": "When `true`, password expiration policy is enforced for this login.",
+	"check_password_policy":     "When `true`, the Windows password policies of the computer on which SQL Server is running are enforced on this login.",
+	"principal_id":              "ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.",
 }
 
 type dataSourceData struct {

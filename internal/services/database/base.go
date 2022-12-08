@@ -6,26 +6,14 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strconv"
 )
 
-var attributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: fmt.Sprintf("Database name. %s.", common.RegularIdentifiersDoc),
-		Type:                types.StringType,
-		Validators:          validators.DatabaseNameValidators,
-	},
-	"collation": {
-		Description: "Default collation name. Can be either a Windows collation name or a SQL collation name.",
-		Type:        types.StringType,
-	},
+var attrDescriptions = map[string]string{
+	"id":        "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
+	"name":      fmt.Sprintf("Database name. %s.", common.RegularIdentifiersDoc),
+	"collation": "Default collation name. Can be either a Windows collation name or a SQL collation name.",
 }
 
 type resourceData struct {

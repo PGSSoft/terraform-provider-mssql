@@ -6,7 +6,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -22,27 +22,40 @@ func (l listDataSource) GetName() string {
 	return "schemas"
 }
 
-func (l listDataSource) GetSchema(context.Context) tfsdk.Schema {
-	schemaAttrs := map[string]tfsdk.Attribute{}
-
-	for n, attr := range attributes {
-		a := attr
-		a.Computed = true
-		schemaAttrs[n] = a
-	}
-
-	return tfsdk.Schema{
-		MarkdownDescription: "Obtains information about all schemas found in SQL database.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": common.ToResourceId(tfsdk.Attribute{
-				MarkdownDescription: "ID of the data source, equals to database ID",
-				Type:                types.StringType,
-			}),
-			"database_id": common.DatabaseIdResourceAttribute,
-			"schemas": {
-				MarkdownDescription: "Set of schemas found in the DB.",
-				Attributes:          tfsdk.SetNestedAttributes(schemaAttrs),
-				Computed:            true,
+func (l listDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Obtains information about all schemas found in SQL database."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "ID of the data source, equals to database ID",
+			Computed:            true,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common.AttributeDescriptions["database_id"] + " Defaults to ID of `master`.",
+			Optional:            true,
+			Computed:            true,
+		},
+		"schemas": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of schemas found in the DB.",
+			Computed:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["id"],
+						Computed:            true,
+					},
+					"database_id": schema.StringAttribute{
+						MarkdownDescription: common.AttributeDescriptions["database_id"],
+						Computed:            true,
+					},
+					"name": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["name"],
+						Computed:            true,
+					},
+					"owner_id": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["owner_id"],
+						Computed:            true,
+					},
+				},
 			},
 		},
 	}

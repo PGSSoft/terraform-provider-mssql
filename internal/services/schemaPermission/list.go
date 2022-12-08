@@ -7,7 +7,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -31,33 +31,35 @@ func (l listDataSource) GetName() string {
 	return "schema_permissions"
 }
 
-func (l listDataSource) GetSchema(ctx context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: "Returns all permissions granted in a schema to given principal",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				MarkdownDescription: "`<database_id>/<schema_id>/<principal_id>`.",
-				Type:                types.StringType,
-				Computed:            true,
-			},
-			"schema_id":    common.ToRequired(attributes["schema_id"]),
-			"principal_id": common.ToRequired(attributes["principal_id"]),
-			"permissions": {
-				MarkdownDescription: "Set of permissions granted to the principal",
-				Computed:            true,
-
-				Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-					"permission": func() tfsdk.Attribute {
-						attr := attributes["permission"]
-						attr.Computed = true
-						return attr
-					}(),
-					"with_grant_option": func() tfsdk.Attribute {
-						attr := attributes["with_grant_option"]
-						attr.Computed = true
-						return attr
-					}(),
-				}),
+func (l listDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Returns all permissions granted in a schema to given principal"
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "`<database_id>/<schema_id>/<principal_id>`.",
+			Computed:            true,
+		},
+		"schema_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["schema_id"],
+			Required:            true,
+		},
+		"principal_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["principal_id"],
+			Required:            true,
+		},
+		"permissions": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of permissions granted to the principal",
+			Computed:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"permission": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["permission"],
+						Computed:            true,
+					},
+					"with_grant_option": schema.BoolAttribute{
+						MarkdownDescription: attrDescriptions["with_grant_option"],
+						Computed:            true,
+					},
+				},
 			},
 		},
 	}

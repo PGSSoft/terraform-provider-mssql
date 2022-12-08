@@ -2,28 +2,14 @@ package sqlUser
 
 import (
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var attributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "`<database_id>/<user_id>`. User ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<user_name>')`.",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: "User name. Cannot be longer than 128 chars.",
-		Type:                types.StringType,
-		Validators:          validators.UserNameValidators,
-	},
-	"database_id": common.DatabaseIdAttribute,
-	"login_id": {
-		MarkdownDescription: "SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.",
-		Type:                types.StringType,
-	},
+var attrDescriptions = map[string]string{
+	"id":       "`<database_id>/<user_id>`. User ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<user_name>')`.",
+	"name":     "User name. Cannot be longer than 128 chars.",
+	"login_id": "SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.",
 }
 
 type resourceData struct {

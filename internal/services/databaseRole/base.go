@@ -7,44 +7,13 @@ import (
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var roleAttributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "`<database_id>/<role_id>`. Role ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<role_name>')`",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: fmt.Sprintf("Role name. %s and cannot be longer than 128 chars.", common2.RegularIdentifiersDoc),
-		Type:                types.StringType,
-		Validators:          validators.UserNameValidators,
-	},
-	"database_id": common2.DatabaseIdAttribute,
-	"owner_id": {
-		MarkdownDescription: "ID of another database role or user owning this role. Can be retrieved using `mssql_database_role` or `mssql_sql_user`.",
-		Type:                types.StringType,
-	},
-}
-
-var roleMemberAttributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "`<database_id>/<member_id>`. Member ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<member_name>')",
-		Type:                types.StringType,
-		Computed:            true,
-	},
-	"name": {
-		Description: "Name of the database principal.",
-		Type:        types.StringType,
-		Computed:    true,
-	},
-	"type": {
-		Description: "One of: `SQL_USER`, `DATABASE_ROLE`, `AZUREAD_USER`",
-		Type:        types.StringType,
-		Computed:    true,
-	},
+var roleAttributeDescriptions = map[string]string{
+	"id":       "`<database_id>/<role_id>`. Role ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<role_name>')`",
+	"name":     fmt.Sprintf("Role name. %s and cannot be longer than 128 chars.", common2.RegularIdentifiersDoc),
+	"owner_id": "ID of another database role or user owning this role. Can be retrieved using `mssql_database_role` or `mssql_sql_user`.",
 }
 
 type resourceData struct {

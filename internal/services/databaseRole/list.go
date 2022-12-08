@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -23,26 +23,39 @@ func (l *listDataSource) GetName() string {
 	return "database_roles"
 }
 
-func (l *listDataSource) GetSchema(context.Context) tfsdk.Schema {
-	attrs := map[string]tfsdk.Attribute{}
-	for n, attr := range roleAttributes {
-		attr.Computed = true
-		attrs[n] = attr
-	}
-
-	return tfsdk.Schema{
-		Description: "Obtains information about all roles defined in a database.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:        types.StringType,
-				Computed:    true,
-				Description: "ID of the resource, equals to database ID",
-			},
-			"database_id": common2.DatabaseIdResourceAttribute,
-			"roles": {
-				Description: "Set of database role objects",
-				Attributes:  tfsdk.SetNestedAttributes(attrs),
-				Computed:    true,
+func (l *listDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Obtains information about all roles defined in a database."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Computed:    true,
+			Description: "ID of the resource, equals to database ID",
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common2.AttributeDescriptions["database_id"] + " Defaults to ID of `master`.",
+			Optional:            true,
+		},
+		"roles": schema.SetNestedAttribute{
+			Description: "Set of database role objects",
+			Computed:    true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: roleAttributeDescriptions["id"],
+						Computed:            true,
+					},
+					"name": schema.StringAttribute{
+						MarkdownDescription: roleAttributeDescriptions["name"],
+						Computed:            true,
+					},
+					"database_id": schema.StringAttribute{
+						MarkdownDescription: common2.AttributeDescriptions["database_id"],
+						Computed:            true,
+					},
+					"owner_id": schema.StringAttribute{
+						MarkdownDescription: roleAttributeDescriptions["owner_id"],
+						Computed:            true,
+					},
+				},
 			},
 		},
 	}

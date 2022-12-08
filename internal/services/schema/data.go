@@ -7,7 +7,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
 
 var _ datasource.DataSourceWithValidation[resourceData] = dataSource{}
@@ -18,37 +18,29 @@ func (d dataSource) GetName() string {
 	return "schema"
 }
 
-func (d dataSource) GetSchema(ctx context.Context) tfsdk.Schema {
-	const idNameRemark = " Either `id` or `name` must be provided."
+func (d dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Retrieves information about DB schema."
 
-	return tfsdk.Schema{
-		MarkdownDescription: "Retrieves information about DB schema.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": func() tfsdk.Attribute {
-				attr := attributes["id"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += idNameRemark
-				return attr
-			}(),
-			"name": func() tfsdk.Attribute {
-				attr := attributes["name"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += idNameRemark
-				return attr
-			}(),
-			"database_id": func() tfsdk.Attribute {
-				attr := attributes["database_id"]
-				attr.Optional = true
-				attr.Computed = true
-				return attr
-			}(),
-			"owner_id": func() tfsdk.Attribute {
-				attr := attributes["owner_id"]
-				attr.Computed = true
-				return attr
-			}(),
+	const idNameRemark = " Either `id` or `name` must be provided."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"] + idNameRemark,
+			Computed:            true,
+			Optional:            true,
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"] + idNameRemark,
+			Computed:            true,
+			Optional:            true,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common.AttributeDescriptions["database_id"],
+			Optional:            true,
+			Computed:            true,
+		},
+		"owner_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["owner_id"],
+			Computed:            true,
 		},
 	}
 }

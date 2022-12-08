@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"strconv"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -84,59 +87,55 @@ func (r *res) GetName() string {
 	return "sql_login"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
+func (r *res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	const azureSQLNote = "\n\n-> **Note** In case of Azure SQL, which does not support this feature, the flag will be ignored. "
-	return tfsdk.Schema{
-		Description: "Manages single login.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":   common2.ToResourceId(attributes["id"]),
-			"name": common2.ToRequired(attributes["name"]),
-			"password": {
-				MarkdownDescription: "Password for the login. Must follow strong password policies defined for SQL server. " +
-					"Passwords are case-sensitive, length must be 8-128 chars, can include all characters except `'` or `name`.\n\n" +
-					"~> **Note** Password will be stored in the raw state as plain-text. [Read more about sensitive data in state](https://www.terraform.io/language/state/sensitive-data).",
-				Type:      types.StringType,
-				Required:  true,
-				Sensitive: true,
+	resp.Schema.MarkdownDescription = "Manages single login."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			"must_change_password": func() tfsdk.Attribute {
-				attr := attributes["must_change_password"]
-				attr.Optional = true
-				attr.MarkdownDescription += " Defaults to `false`. \n\n" +
-					"-> **Note** After password is changed, this flag is being reset to `false`, which will show as changes in Terraform plan. " +
-					"Use `ignore_changes` block to prevent this behavior." + azureSQLNote
-				return attr
-			}(),
-			"default_database_id": func() tfsdk.Attribute {
-				attr := attributes["default_database_id"]
-				attr.Optional = true
-				attr.MarkdownDescription += " Defaults to ID of `master`." + azureSQLNote
-				return attr
-			}(),
-			"default_language": func() tfsdk.Attribute {
-				attr := attributes["default_language"]
-				attr.Optional = true
-				attr.Description += " Defaults to current default language of the server. " +
-					"If the default language of the server is later changed, the default language of the login remains unchanged." + azureSQLNote
-				return attr
-			}(),
-			"check_password_expiration": func() tfsdk.Attribute {
-				attr := attributes["check_password_expiration"]
-				attr.Optional = true
-				attr.MarkdownDescription += " Defaults to `false`." + azureSQLNote
-				return attr
-			}(),
-			"check_password_policy": func() tfsdk.Attribute {
-				attr := attributes["check_password_policy"]
-				attr.Optional = true
-				attr.MarkdownDescription += " Defaults to `true`." + azureSQLNote
-				return attr
-			}(),
-			"principal_id": func() tfsdk.Attribute {
-				attr := attributes["principal_id"]
-				attr.Computed = true
-				return attr
-			}(),
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Required:            true,
+			Validators:          validators.LoginNameValidators,
+		},
+		"password": schema.StringAttribute{
+			MarkdownDescription: "Password for the login. Must follow strong password policies defined for SQL server. " +
+				"Passwords are case-sensitive, length must be 8-128 chars, can include all characters except `'` or `name`.\n\n" +
+				"~> **Note** Password will be stored in the raw state as plain-text. [Read more about sensitive data in state](https://www.terraform.io/language/state/sensitive-data).",
+			Required:  true,
+			Sensitive: true,
+		},
+		"must_change_password": schema.BoolAttribute{
+			MarkdownDescription: attrDescriptions["must_change_password"] + " Defaults to `false`. \n\n" +
+				"-> **Note** After password is changed, this flag is being reset to `false`, which will show as changes in Terraform plan. " +
+				"Use `ignore_changes` block to prevent this behavior." + azureSQLNote,
+			Optional: true,
+		},
+		"default_database_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["default_database_id"] + " Defaults to ID of `master`." + azureSQLNote,
+			Optional:            true,
+		},
+		"default_language": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["default_language"] + " Defaults to current default language of the server. " +
+				"If the default language of the server is later changed, the default language of the login remains unchanged." + azureSQLNote,
+			Optional: true,
+		},
+		"check_password_expiration": schema.BoolAttribute{
+			MarkdownDescription: attrDescriptions["check_password_expiration"] + " Defaults to `false`." + azureSQLNote,
+			Optional:            true,
+		},
+		"check_password_policy": schema.BoolAttribute{
+			MarkdownDescription: attrDescriptions["check_password_policy"] + " Defaults to `true`." + azureSQLNote,
+			Optional:            true,
+		},
+		"principal_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["principal_id"],
+			Computed:            true,
 		},
 	}
 }

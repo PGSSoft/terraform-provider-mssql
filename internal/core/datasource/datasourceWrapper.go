@@ -6,11 +6,12 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
-var _ datasource.DataSourceWithValidateConfig = &dataSourceWrapper[any]{}
+var (
+	_ datasource.DataSourceWithValidateConfig = &dataSourceWrapper[any]{}
+	_ datasource.DataSourceWithSchema         = &dataSourceWrapper[any]{}
+)
 
 func NewDataSource[T any](d DataSource[T]) func() datasource.DataSourceWithConfigure {
 	return func() datasource.DataSourceWithConfigure {
@@ -44,9 +45,10 @@ func (d *dataSourceWrapper[T]) Configure(_ context.Context, req datasource.Confi
 	d.ctx = resourceCtx
 }
 
-func (d *dataSourceWrapper[T]) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	diags := diag.Diagnostics{}
-	return d.d.GetSchema(utils.WithDiagnostics(ctx, &diags)), diags
+func (d *dataSourceWrapper[T]) Schema(ctx context.Context, _ datasource.SchemaRequest, response *datasource.SchemaResponse) {
+	resp := SchemaResponse{}
+	d.d.Schema(utils.WithDiagnostics(ctx, &response.Diagnostics), SchemaRequest{}, &resp)
+	response.Schema = resp.Schema
 }
 
 func (d *dataSourceWrapper[T]) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

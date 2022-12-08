@@ -1,22 +1,22 @@
 package validators
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-var DatabaseNameValidators = []tfsdk.AttributeValidator{
+var DatabaseNameValidators = []validator.String{
 	sqlIdentifierValidator{},
 	stringLengthValidator{1, 128},
 }
 
-var LoginNameValidators = []tfsdk.AttributeValidator{
+var LoginNameValidators = []validator.String{
 	sqlIdentifierValidator{},
 }
 
-var UserNameValidators = []tfsdk.AttributeValidator{
+var UserNameValidators = []validator.String{
 	stringLengthValidator{Min: 1, Max: 128},
 }
 
-var SchemaNameValidators = []tfsdk.AttributeValidator{
+var SchemaNameValidators = []validator.String{
 	stringLengthValidator{Min: 1, Max: 128},
 }

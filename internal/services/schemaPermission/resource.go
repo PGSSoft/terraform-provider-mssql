@@ -7,7 +7,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strings"
 )
@@ -28,21 +30,41 @@ func (r res) GetName() string {
 	return "schema_permission"
 }
 
-func (r res) GetSchema(ctx context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: "Grants database-level permission.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":           common.ToResourceId(attributes["id"]),
-			"schema_id":    common.ToRequiredImmutable(attributes["schema_id"]),
-			"principal_id": common.ToRequiredImmutable(attributes["principal_id"]),
-			"permission":   common.ToRequiredImmutable(attributes["permission"]),
-			"with_grant_option": func() tfsdk.Attribute {
-				attr := attributes["with_grant_option"]
-				attr.MarkdownDescription += " Defaults to `false`."
-				attr.Optional = true
-				attr.Computed = true
-				return attr
-			}(),
+func (r res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Grants database-level permission."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"schema_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["schema_id"],
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"principal_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["principal_id"],
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"permission": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["permission"],
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"with_grant_option": schema.BoolAttribute{
+			MarkdownDescription: attrDescriptions["with_grant_option"] + " Defaults to `false`.",
+			Optional:            true,
+			Computed:            true,
 		},
 	}
 }

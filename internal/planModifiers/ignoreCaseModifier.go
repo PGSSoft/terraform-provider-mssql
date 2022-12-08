@@ -3,12 +3,11 @@ package planModifiers
 import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"strings"
 )
 
-func IgnoreCase() tfsdk.AttributePlanModifier {
+func IgnoreCase() planmodifier.String {
 	return ignoreCaseModifier{}
 }
 
@@ -22,40 +21,18 @@ func (m ignoreCaseModifier) MarkdownDescription(ctx context.Context) string {
 	return m.Description(ctx)
 }
 
-func (m ignoreCaseModifier) Modify(ctx context.Context, request tfsdk.ModifyAttributePlanRequest, response *tfsdk.ModifyAttributePlanResponse) {
+func (m ignoreCaseModifier) PlanModifyString(ctx context.Context, request planmodifier.StringRequest, response *planmodifier.StringResponse) {
 	isNotSet := func(v attr.Value) bool {
 		return v == nil || v.IsNull() || v.IsUnknown()
 	}
 
-	if isNotSet(request.AttributeState) || isNotSet(request.AttributePlan) {
+	if isNotSet(request.StateValue) || isNotSet(request.PlanValue) {
 		return
 	}
 
-	if request.AttributePlan.Type(ctx) != types.StringType || request.AttributeState.Type(ctx) != types.StringType {
+	if strings.ToUpper(request.PlanValue.ValueString()) != strings.ToUpper(request.StateValue.ValueString()) {
 		return
 	}
 
-	toString := func(v attr.Value) *string {
-		var strValue string
-
-		value, err := v.ToTerraformValue(ctx)
-		if err == nil {
-			err = value.As(&strValue)
-		}
-		if err != nil {
-			response.Diagnostics.AddAttributeError(request.AttributePath, "Failed to convert value to string", err.Error())
-			return nil
-		}
-
-		return &strValue
-	}
-
-	plan := toString(request.AttributePlan)
-	state := toString(request.AttributeState)
-
-	if plan == nil || state == nil || strings.ToUpper(*plan) != strings.ToUpper(*state) {
-		return
-	}
-
-	response.AttributePlan = request.AttributeState
+	response.PlanValue = request.StateValue
 }

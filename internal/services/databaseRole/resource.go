@@ -5,10 +5,13 @@ import (
 	"errors"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/resource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 type res struct{}
@@ -17,20 +20,33 @@ func (r *res) GetName() string {
 	return "database_role"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		Description: "Manages database-level role.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id":          common2.ToResourceId(roleAttributes["id"]),
-			"name":        common2.ToRequired(roleAttributes["name"]),
-			"database_id": common2.DatabaseIdResourceAttribute,
-			"owner_id": func() tfsdk.Attribute {
-				attr := roleAttributes["owner_id"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += " Defaults to ID of current user, used to authorize the Terraform provider."
-				return attr
-			}(),
+func (r *res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Manages database-level role."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: roleAttributeDescriptions["id"],
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: roleAttributeDescriptions["name"],
+			Required:            true,
+			Validators:          validators.UserNameValidators,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common2.AttributeDescriptions["database_id"] + " Defaults to ID of `master`.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
+			},
+		},
+		"owner_id": schema.StringAttribute{
+			MarkdownDescription: roleAttributeDescriptions["owner_id"] + " Defaults to ID of current user, used to authorize the Terraform provider.",
+			Optional:            true,
+			Computed:            true,
 		},
 	}
 }

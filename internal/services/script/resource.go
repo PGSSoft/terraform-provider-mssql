@@ -7,7 +7,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -28,43 +30,46 @@ func (r *res) GetName() string {
 	return "script"
 }
 
-func (r *res) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: `Allows execution of arbitrary SQL scripts to check state and apply desired state. 
+func (r *res) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = `Allows execution of arbitrary SQL scripts to check state and apply desired state. 
 
 -> **Note** This resource is meant to be an escape hatch for all cases not supported by the provider's resources. Whenever possible, use dedicated resources, which offer better plan, validation and error reporting.  
-`,
-		Attributes: map[string]tfsdk.Attribute{
-			"id": common.ToResourceId(tfsdk.Attribute{
-				MarkdownDescription: "Used only internally by Terraform. Always set to `script`",
-				Type:                types.StringType,
-			}),
-			"database_id": common.ToRequiredImmutable(common.DatabaseIdAttribute),
-			"state": {
-				MarkdownDescription: "Desired state of the DB. It is arbitrary map of string values that will be compared against the values returned by the `read_script`.",
-				Type:                types.MapType{ElemType: types.StringType},
-				Required:            true,
+`
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "Used only internally by Terraform. Always set to `script`",
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			"read_script": {
-				MarkdownDescription: "SQL script returning current state of the DB. It must return single-row result set where column names match the keys of `state` map and all values are strings that will be compared against `state` to determine if the resource state matches DB state.",
-				Type:                types.StringType,
-				Required:            true,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common.AttributeDescriptions["database_id"],
+			Required:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.RequiresReplace(),
 			},
-			"create_script": {
-				MarkdownDescription: "SQL script executed when the resource does not exist in Terraform state. When not provided, `update_script` will be used to create the resource.",
-				Type:                types.StringType,
-				Optional:            true,
-			},
-			"update_script": {
-				MarkdownDescription: "SQL script executed when the desired state specified in `state` attribute does not match the state returned by `read_script`",
-				Type:                types.StringType,
-				Required:            true,
-			},
-			"delete_script": {
-				MarkdownDescription: "SQL script executed when the resource is being destroyed. When not provided, no action will be taken during resource destruction.",
-				Type:                types.StringType,
-				Optional:            true,
-			},
+		},
+		"state": schema.MapAttribute{
+			ElementType:         types.StringType,
+			MarkdownDescription: "Desired state of the DB. It is arbitrary map of string values that will be compared against the values returned by the `read_script`.",
+			Required:            true,
+		},
+		"read_script": schema.StringAttribute{
+			MarkdownDescription: "SQL script returning current state of the DB. It must return single-row result set where column names match the keys of `state` map and all values are strings that will be compared against `state` to determine if the resource state matches DB state.",
+			Required:            true,
+		},
+		"create_script": schema.StringAttribute{
+			MarkdownDescription: "SQL script executed when the resource does not exist in Terraform state. When not provided, `update_script` will be used to create the resource.",
+			Optional:            true,
+		},
+		"update_script": schema.StringAttribute{
+			MarkdownDescription: "SQL script executed when the desired state specified in `state` attribute does not match the state returned by `read_script`",
+			Required:            true,
+		},
+		"delete_script": schema.StringAttribute{
+			MarkdownDescription: "SQL script executed when the resource is being destroyed. When not provided, no action will be taken during resource destruction.",
+			Optional:            true,
 		},
 	}
 }

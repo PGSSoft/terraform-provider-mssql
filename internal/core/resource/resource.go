@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 type StateSetter[TData any] func(state TData)
@@ -69,9 +69,15 @@ type DeleteRequest[TData any] struct {
 
 type DeleteResponse[TData any] struct{}
 
+type SchemaRequest struct{}
+
+type SchemaResponse struct {
+	Schema schema.Schema
+}
+
 type Resource[TData any] interface {
 	GetName() string
-	GetSchema(ctx context.Context) tfsdk.Schema
+	Schema(ctx context.Context, req SchemaRequest, resp *SchemaResponse)
 	Read(ctx context.Context, req ReadRequest[TData], resp *ReadResponse[TData])
 	Create(ctx context.Context, req CreateRequest[TData], resp *CreateResponse[TData])
 	Update(ctx context.Context, req UpdateRequest[TData], resp *UpdateResponse[TData])

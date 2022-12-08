@@ -3,30 +3,16 @@ package azureADUser
 import (
 	"context"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/validators"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strings"
 )
 
-var attributes = map[string]tfsdk.Attribute{
-	"id": {
-		MarkdownDescription: "`<database_id>/<user_id>`. User ID can be retrieved using `sys.database_principals` view.",
-		Type:                types.StringType,
-	},
-	"name": {
-		MarkdownDescription: "User name. Cannot be longer than 128 chars.",
-		Type:                types.StringType,
-		Validators:          validators.UserNameValidators,
-	},
-	"database_id": common.DatabaseIdAttribute,
-	"user_object_id": {
-		MarkdownDescription: "Azure AD object_id of the user. This can be either regular user or a group.",
-		Type:                types.StringType,
-	},
+var attrDescriptions = map[string]string{
+	"id":             "`<database_id>/<user_id>`. User ID can be retrieved using `sys.database_principals` view.",
+	"name":           "User name. Cannot be longer than 128 chars.",
+	"user_object_id": "Azure AD object_id of the user. This can be either regular user or a group.",
 }
 
 type resourceData struct {
