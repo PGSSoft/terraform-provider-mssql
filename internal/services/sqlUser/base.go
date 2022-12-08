@@ -26,6 +26,12 @@ var attributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var attrDescriptions = map[string]string{
+	"id":       "`<database_id>/<user_id>`. User ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<user_name>')`.",
+	"name":     "User name. Cannot be longer than 128 chars.",
+	"login_id": "SID of SQL login. Can be retrieved using `mssql_sql_login` or `SELECT SUSER_SID('<login_name>')`.",
+}
+
 type resourceData struct {
 	Id         types.String `tfsdk:"id"`
 	Name       types.String `tfsdk:"name"`

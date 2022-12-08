@@ -28,6 +28,12 @@ var attributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var attrDescriptions = map[string]string{
+	"id":       "Role principal ID.",
+	"name":     fmt.Sprintf("Role name. %s and cannot be longer than 128 chars.", common2.RegularIdentifiersDoc),
+	"owner_id": "ID of another server role or login owning this role. Can be retrieved using `mssql_server_role` or `mssql_sql_login`.",
+}
+
 type resourceData struct {
 	Id      types.String `tfsdk:"id"`
 	Name    types.String `tfsdk:"name"`

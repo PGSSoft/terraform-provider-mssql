@@ -29,6 +29,12 @@ var roleAttributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var roleAttributeDescriptions = map[string]string{
+	"id":       "`<database_id>/<role_id>`. Role ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<role_name>')`",
+	"name":     fmt.Sprintf("Role name. %s and cannot be longer than 128 chars.", common2.RegularIdentifiersDoc),
+	"owner_id": "ID of another database role or user owning this role. Can be retrieved using `mssql_database_role` or `mssql_sql_user`.",
+}
+
 var roleMemberAttributes = map[string]tfsdk.Attribute{
 	"id": {
 		MarkdownDescription: "`<database_id>/<member_id>`. Member ID can be retrieved using `SELECT DATABASE_PRINCIPAL_ID('<member_name>')",

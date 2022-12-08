@@ -4,16 +4,26 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// To ensure validator fully satisfies framework interfaces
-var _ tfsdk.AttributeValidator = stringLengthValidator{}
+var (
+	// To ensure validator fully satisfies framework interfaces
+	_ tfsdk.AttributeValidator = stringLengthValidator{}
+	_ validator.String         = stringLengthValidator{}
+)
 
 type stringLengthValidator struct {
 	Min int
 	Max int
+}
+
+func (s stringLengthValidator) ValidateString(ctx context.Context, request validator.StringRequest, response *validator.StringResponse) {
+	s.validateStringImpl(utils.WithDiagnostics(ctx, &response.Diagnostics), request.Path, request.ConfigValue)
 }
 
 func (s stringLengthValidator) Description(context.Context) string {
@@ -31,6 +41,10 @@ func (s stringLengthValidator) Validate(ctx context.Context, request tfsdk.Valid
 		return
 	}
 
+	s.validateStringImpl(utils.WithDiagnostics(ctx, &response.Diagnostics), request.AttributePath, str)
+}
+
+func (s stringLengthValidator) validateStringImpl(ctx context.Context, path path.Path, str types.String) {
 	if !common.IsAttrSet(str) {
 		return
 	}
@@ -38,10 +52,6 @@ func (s stringLengthValidator) Validate(ctx context.Context, request tfsdk.Valid
 	strLen := len(str.ValueString())
 
 	if strLen < s.Min || strLen > s.Max {
-		response.Diagnostics.AddAttributeError(
-			request.AttributePath,
-			"Invalid String Length",
-			fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), str.ValueString(), strLen),
-		)
+		utils.AddAttributeError(ctx, path, "Invalid String Length", fmt.Sprintf("%s, got: %s (%d).", s.Description(ctx), str.ValueString(), strLen))
 	}
 }

@@ -28,6 +28,12 @@ var attributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var attrDescriptions = map[string]string{
+	"id":        "Database ID. Can be retrieved using `SELECT DB_ID('<db_name>')`.",
+	"name":      fmt.Sprintf("Database name. %s.", common.RegularIdentifiersDoc),
+	"collation": "Default collation name. Can be either a Windows collation name or a SQL collation name.",
+}
+
 type resourceData struct {
 	Id        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`

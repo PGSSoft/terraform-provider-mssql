@@ -29,6 +29,12 @@ var attributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var attrDescriptions = map[string]string{
+	"id":             "`<database_id>/<user_id>`. User ID can be retrieved using `sys.database_principals` view.",
+	"name":           "User name. Cannot be longer than 128 chars.",
+	"user_object_id": "Azure AD object_id of the user. This can be either regular user or a group.",
+}
+
 type resourceData struct {
 	Id           types.String `tfsdk:"id"`
 	Name         types.String `tfsdk:"name"`

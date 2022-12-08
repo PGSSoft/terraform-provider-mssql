@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
@@ -14,6 +15,10 @@ var LoginNameValidators = []tfsdk.AttributeValidator{
 }
 
 var UserNameValidators = []tfsdk.AttributeValidator{
+	stringLengthValidator{Min: 1, Max: 128},
+}
+
+var UserNameStringValidators = []validator.String{
 	stringLengthValidator{Min: 1, Max: 128},
 }
 

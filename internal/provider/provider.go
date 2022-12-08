@@ -6,11 +6,9 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/pkg/errors"
 )
 
@@ -18,6 +16,7 @@ import (
 var (
 	_ provider.ProviderWithMetadata       = &mssqlProvider{}
 	_ provider.ProviderWithValidateConfig = &mssqlProvider{}
+	_ provider.ProviderWithSchema         = &mssqlProvider{}
 )
 
 const (
@@ -104,64 +103,55 @@ func (p *mssqlProvider) DataSources(context.Context) []func() datasource.DataSou
 	return ctors
 }
 
-func (p *mssqlProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p *mssqlProvider) Schema(_ context.Context, _ provider.SchemaRequest, response *provider.SchemaResponse) {
 	if p.Version == VersionTest {
-		return tfsdk.Schema{}, nil
+		return
 	}
 
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"hostname": {
-				Description: "FQDN or IP address of the SQL endpoint. Can be also set using `MSSQL_HOSTNAME` environment variable.",
-				Type:        types.StringType,
-				Optional:    true,
-			},
-			"port": {
-				MarkdownDescription: "TCP port of SQL endpoint. Defaults to `1433`. Can be also set using `MSSQL_PORT` environment variable.",
-				Type:                types.Int64Type,
-				Optional:            true,
-			},
-			"sql_auth": {
-				Description: "When provided, SQL authentication will be used when connecting.",
-				Optional:    true,
-				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-					"username": {
-						Description: "User name for SQL authentication.",
-						Type:        types.StringType,
-						Required:    true,
-					},
-					"password": {
-						Description: "Password for SQL authentication.",
-						Type:        types.StringType,
-						Required:    true,
-						Sensitive:   true,
-					},
-				}),
-			},
-			"azure_auth": {
-				Description: "When provided, Azure AD authentication will be used when connecting.",
-				Optional:    true,
-				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-					"client_id": {
-						Description: "Service Principal client (application) ID. When omitted, default, chained set of credentials will be used.",
-						Type:        types.StringType,
-						Optional:    true,
-					},
-					"client_secret": {
-						Description: "Service Principal secret. When omitted, default, chained set of credentials will be used.",
-						Type:        types.StringType,
-						Sensitive:   true,
-						Optional:    true,
-					},
-					"tenant_id": {
-						Description: "Azure AD tenant ID. Required only if Azure SQL Server's tenant is different than Service Principal's.",
-						Type:        types.StringType,
-						Optional:    true,
-					},
-				}),
+	response.Schema.Attributes = map[string]schema.Attribute{
+		"hostname": schema.StringAttribute{
+			Description: "FQDN or IP address of the SQL endpoint. Can be also set using `MSSQL_HOSTNAME` environment variable.",
+			Optional:    true,
+		},
+		"port": schema.Int64Attribute{
+			MarkdownDescription: "TCP port of SQL endpoint. Defaults to `1433`. Can be also set using `MSSQL_PORT` environment variable.",
+			Optional:            true,
+		},
+		"sql_auth": schema.SingleNestedAttribute{
+			Description: "When provided, SQL authentication will be used when connecting.",
+			Optional:    true,
+			Attributes: map[string]schema.Attribute{
+				"username": schema.StringAttribute{
+					Description: "User name for SQL authentication.",
+					Required:    true,
+				},
+				"password": schema.StringAttribute{
+					Description: "Password for SQL authentication.",
+					Required:    true,
+					Sensitive:   true,
+				},
 			},
 		},
-	}, nil
+		"azure_auth": schema.SingleNestedAttribute{
+			Description: "When provided, Azure AD authentication will be used when connecting.",
+			Optional:    true,
+			Attributes: map[string]schema.Attribute{
+				"client_id": schema.StringAttribute{
+					Description: "Service Principal client (application) ID. When omitted, default, chained set of credentials will be used.",
+					Optional:    true,
+				},
+				"client_secret": schema.StringAttribute{
+					Description: "Service Principal secret. When omitted, default, chained set of credentials will be used.",
+					Sensitive:   true,
+					Optional:    true,
+				},
+				"tenant_id": schema.StringAttribute{
+					Description: "Azure AD tenant ID. Required only if Azure SQL Server's tenant is different than Service Principal's.",
+					Optional:    true,
+				},
+			},
+		},
+	}
 }
 
 func (p *mssqlProvider) ValidateConfig(ctx context.Context, request provider.ValidateConfigRequest, response *provider.ValidateConfigResponse) {

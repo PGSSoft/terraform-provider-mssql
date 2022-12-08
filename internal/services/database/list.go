@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -20,25 +20,31 @@ func (l *listDataSource) GetName() string {
 	return "databases"
 }
 
-func (l *listDataSource) GetSchema(context.Context) tfsdk.Schema {
-	attrs := map[string]tfsdk.Attribute{}
-	for n, attribute := range attributes {
-		attribute.Computed = true
-		attrs[n] = attribute
-	}
-
-	return tfsdk.Schema{
-		Description: "Obtains information about all databases found in SQL Server instance.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:        types.StringType,
-				Computed:    true,
-				Description: "ID of the resource used only internally by the provider.",
-			},
-			"databases": {
-				Description: "Set of database objects",
-				Attributes:  tfsdk.SetNestedAttributes(attrs),
-				Computed:    true,
+func (l *listDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Obtains information about all databases found in SQL Server instance."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			Description: "ID of the resource used only internally by the provider.",
+			Computed:    true,
+		},
+		"databases": schema.SetNestedAttribute{
+			Description: "Set of database objects",
+			Computed:    true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["id"],
+						Computed:            true,
+					},
+					"name": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["name"],
+						Computed:            true,
+					},
+					"collation": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["collation"],
+						Computed:            true,
+					},
+				},
 			},
 		},
 	}

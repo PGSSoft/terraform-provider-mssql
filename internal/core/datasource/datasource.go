@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
 
 type StateSetter[TData any] func(state TData)
@@ -21,6 +21,12 @@ type MonadRequest struct {
 
 func (r MonadRequest) Then(f func()) utils.ErrorMonad {
 	return r.monad.Then(f)
+}
+
+type SchemaRequest struct{}
+
+type SchemaResponse struct {
+	Schema schema.Schema
 }
 
 type ReadRequest[TData any] struct {
@@ -41,7 +47,7 @@ func (r *ReadResponse[TData]) SetState(state TData) {
 
 type DataSource[TData any] interface {
 	GetName() string
-	GetSchema(ctx context.Context) tfsdk.Schema
+	Schema(ctx context.Context, req SchemaRequest, resp *SchemaResponse)
 	Read(ctx context.Context, req ReadRequest[TData], resp *ReadResponse[TData])
 }
 

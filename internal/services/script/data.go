@@ -5,7 +5,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -22,29 +22,30 @@ func (d *dataSource) GetName() string {
 	return "query"
 }
 
-func (d *dataSource) GetSchema(context.Context) tfsdk.Schema {
-	return tfsdk.Schema{
-		MarkdownDescription: `
+func (d *dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = `
 Retrieves arbitrary SQL query result.
 
 -> **Note** This data source is meant to be an escape hatch for all cases not supported by the provider's data sources. Whenever possible, use dedicated data sources, which offer better plan, validation and error reporting.
-`,
-		Attributes: map[string]tfsdk.Attribute{
-			"id": common.ToResourceId(tfsdk.Attribute{
-				MarkdownDescription: "Used only internally by Terraform. Always set to `query`",
-				Type:                types.StringType,
-			}),
-			"database_id": common.ToRequiredImmutable(common.DatabaseIdAttribute),
-			"query": {
-				MarkdownDescription: "SQL query returning single result set, with any number of rows, where all columns are strings",
-				Type:                types.StringType,
-				Required:            true,
-			},
-			"result": {
-				MarkdownDescription: "Results of the SQL query, represented as list of maps, where the map key corresponds to column name and the value is the value of column in given row.",
-				Type:                types.ListType{ElemType: types.MapType{ElemType: types.StringType}},
-				Computed:            true,
-			},
+`
+
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "Used only internally by Terraform. Always set to `query`",
+			Computed:            true,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common.AttributeDescriptions["database_id"],
+			Required:            true,
+		},
+		"query": schema.StringAttribute{
+			MarkdownDescription: "SQL query returning single result set, with any number of rows, where all columns are strings",
+			Required:            true,
+		},
+		"result": schema.ListAttribute{
+			MarkdownDescription: "Results of the SQL query, represented as list of maps, where the map key corresponds to column name and the value is the value of column in given row.",
+			Computed:            true,
+			ElementType:         types.MapType{ElemType: types.StringType},
 		},
 	}
 }

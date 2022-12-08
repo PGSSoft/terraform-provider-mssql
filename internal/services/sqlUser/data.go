@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	common2 "github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 type dataSource struct{}
@@ -15,18 +15,26 @@ func (d *dataSource) GetName() string {
 	return "sql_user"
 }
 
-func (d *dataSource) GetSchema(context.Context) tfsdk.Schema {
-	a := map[string]tfsdk.Attribute{}
-	for n, attribute := range attributes {
-		attribute.Required = n == "name"
-		attribute.Optional = n == "database_id"
-		attribute.Computed = n != "name"
-		a[n] = attribute
-	}
-
-	return tfsdk.Schema{
-		Description: "Obtains information about single SQL database user.",
-		Attributes:  a,
+func (d *dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Obtains information about single SQL database user."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"],
+			Computed:            true,
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"],
+			Required:            true,
+		},
+		"database_id": schema.StringAttribute{
+			MarkdownDescription: common2.AttributeDescriptions["database_id"],
+			Optional:            true,
+			Computed:            true,
+		},
+		"login_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["login_id"],
+			Computed:            true,
+		},
 	}
 }
 

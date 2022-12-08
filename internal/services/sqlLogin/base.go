@@ -45,6 +45,17 @@ var attributes = map[string]tfsdk.Attribute{
 	},
 }
 
+var attrDescriptions = map[string]string{
+	"id":                        "Login SID. Can be retrieved using `SELECT SUSER_SID('<login_name>')`.",
+	"name":                      fmt.Sprintf("Login name. %s and cannot contain `\\ `", common.RegularIdentifiersDoc),
+	"must_change_password":      "When true, password change will be forced on first logon.",
+	"default_database_id":       "ID of login's default DB. The ID can be retrieved using `mssql_database` data resource.",
+	"default_language":          "Default language assigned to login.",
+	"check_password_expiration": "When `true`, password expiration policy is enforced for this login.",
+	"check_password_policy":     "When `true`, the Windows password policies of the computer on which SQL Server is running are enforced on this login.",
+	"principal_id":              "ID used to reference SQL Login in other resources, e.g. `server_role`. Can be retrieved from `sys.sql_logins`.",
+}
+
 type dataSourceData struct {
 	Id                      types.String `tfsdk:"id"`
 	Name                    types.String `tfsdk:"name"`

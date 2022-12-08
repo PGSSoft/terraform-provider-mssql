@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/core/datasource"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -20,27 +20,31 @@ func (l listDataSource) GetName() string {
 	return "server_roles"
 }
 
-func (l listDataSource) GetSchema(ctx context.Context) tfsdk.Schema {
-	attrs := map[string]tfsdk.Attribute{}
-
-	for name, attr := range attributes {
-		attr.Computed = true
-		attrs[name] = attr
-	}
-
-	return tfsdk.Schema{
-		MarkdownDescription: "Obtains information about all roles defined in the server.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				MarkdownDescription: "Only used internally in Terraform. Always set to `server_roles`.",
-				Type:                types.StringType,
-				Computed:            true,
-			},
-			"roles": {
-				MarkdownDescription: "Set of all roles found in the server",
-				Computed:            true,
-
-				Attributes: tfsdk.SetNestedAttributes(attrs),
+func (l listDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema.MarkdownDescription = "Obtains information about all roles defined in the server."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "Only used internally in Terraform. Always set to `server_roles`.",
+			Computed:            true,
+		},
+		"roles": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of all roles found in the server",
+			Computed:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["id"],
+						Computed:            true,
+					},
+					"name": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["name"],
+						Computed:            true,
+					},
+					"owner_id": schema.StringAttribute{
+						MarkdownDescription: attrDescriptions["owner_id"],
+						Computed:            true,
+					},
+				},
 			},
 		},
 	}

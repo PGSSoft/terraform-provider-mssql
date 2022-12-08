@@ -8,7 +8,7 @@ import (
 	"github.com/PGSSoft/terraform-provider-mssql/internal/services/common"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -33,54 +33,42 @@ func (d dataSource) GetName() string {
 	return "server_role"
 }
 
-func (d dataSource) GetSchema(context.Context) tfsdk.Schema {
+func (d dataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	const requiredNote = " Either `name` or `id` must be provided."
-
-	return tfsdk.Schema{
-		Description: "Obtains information about single server role.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": func() tfsdk.Attribute {
-				attr := attributes["id"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += requiredNote
-
-				return attr
-			}(),
-			"name": func() tfsdk.Attribute {
-				attr := attributes["name"]
-				attr.Optional = true
-				attr.Computed = true
-				attr.MarkdownDescription += requiredNote
-
-				return attr
-			}(),
-			"owner_id": func() tfsdk.Attribute {
-				attr := attributes["owner_id"]
-				attr.Computed = true
-
-				return attr
-			}(),
-			"members": {
-				MarkdownDescription: "Set of role members",
-				Computed:            true,
-				Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
+	resp.Schema.MarkdownDescription = "Obtains information about single server role."
+	resp.Schema.Attributes = map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["id"] + requiredNote,
+			Computed:            true,
+			Optional:            true,
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["name"] + requiredNote,
+			Computed:            true,
+			Optional:            true,
+		},
+		"owner_id": schema.StringAttribute{
+			MarkdownDescription: attrDescriptions["owner_id"],
+			Computed:            true,
+		},
+		"members": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of role members",
+			Computed:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
 						MarkdownDescription: "ID of the member principal",
 						Computed:            true,
-						Type:                types.StringType,
 					},
-					"name": {
+					"name": schema.StringAttribute{
 						MarkdownDescription: "Name of the server principal",
 						Computed:            true,
-						Type:                types.StringType,
 					},
-					"type": {
+					"type": schema.StringAttribute{
 						MarkdownDescription: "One of: `SQL_LOGIN`, `SERVER_ROLE`",
 						Computed:            true,
-						Type:                types.StringType,
 					},
-				}),
+				},
 			},
 		},
 	}
