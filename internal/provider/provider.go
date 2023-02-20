@@ -13,11 +13,7 @@ import (
 )
 
 // To ensure provider fully satisfies framework interfaces
-var (
-	_ provider.ProviderWithMetadata       = &mssqlProvider{}
-	_ provider.ProviderWithValidateConfig = &mssqlProvider{}
-	_ provider.ProviderWithSchema         = &mssqlProvider{}
-)
+var _ provider.ProviderWithValidateConfig = &mssqlProvider{}
 
 const (
 	VersionDev  = "dev"

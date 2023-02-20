@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"strconv"
 	"strings"
@@ -16,9 +17,9 @@ type compIdType interface {
 	getElementsCount() int
 }
 
-func CompositeIdType(elemCount int) types.StringTypable {
-	var t types.StringTypable
-	t = compositeIdType{elemCount: elemCount, valueFactory: func(id CompositeId) types.StringValuable {
+func CompositeIdType(elemCount int) basetypes.StringTypable {
+	var t basetypes.StringTypable
+	t = compositeIdType{elemCount: elemCount, valueFactory: func(id CompositeId) basetypes.StringValuable {
 		id.attrType = &t
 		return id
 	}}
@@ -27,14 +28,14 @@ func CompositeIdType(elemCount int) types.StringTypable {
 
 type compositeIdType struct {
 	elemCount    int
-	valueFactory func(id CompositeId) types.StringValuable
+	valueFactory func(id CompositeId) basetypes.StringValuable
 }
 
 func (t compositeIdType) TerraformType(context.Context) tftypes.Type {
 	return tftypes.String
 }
 
-func (t compositeIdType) ValueFromTerraform(ctx context.Context, value tftypes.Value) (attr.Value, error) {
+func (t compositeIdType) ValueFromTerraform(_ context.Context, value tftypes.Value) (attr.Value, error) {
 	if value.IsNull() {
 		return t.valueFactory(CompositeId{isNull: true}), nil
 	}
@@ -61,7 +62,7 @@ func (t compositeIdType) ValueFromTerraform(ctx context.Context, value tftypes.V
 	return t.valueFactory(CompositeId{elems: elems}), nil
 }
 
-func (t compositeIdType) ValueFromString(_ context.Context, value types.String) (types.StringValuable, diag.Diagnostics) {
+func (t compositeIdType) ValueFromString(_ context.Context, value types.String) (basetypes.StringValuable, diag.Diagnostics) {
 	if value.IsNull() {
 		return t.valueFactory(CompositeId{isNull: true}), nil
 	}
@@ -118,7 +119,7 @@ type CompositeId struct {
 	isNull    bool
 	isUnknown bool
 	elems     []string
-	attrType  *types.StringTypable
+	attrType  *basetypes.StringTypable
 }
 
 func (id CompositeId) Type(context.Context) attr.Type {

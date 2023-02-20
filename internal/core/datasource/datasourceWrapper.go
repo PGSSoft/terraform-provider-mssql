@@ -8,10 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 )
 
-var (
-	_ datasource.DataSourceWithValidateConfig = &dataSourceWrapper[any]{}
-	_ datasource.DataSourceWithSchema         = &dataSourceWrapper[any]{}
-)
+var _ datasource.DataSourceWithValidateConfig = &dataSourceWrapper[any]{}
 
 func NewDataSource[T any](d DataSource[T]) func() datasource.DataSourceWithConfigure {
 	return func() datasource.DataSourceWithConfigure {
