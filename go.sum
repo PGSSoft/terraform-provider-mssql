@@ -198,8 +198,8 @@ github.com/mattn/go-isatty v0.0.3/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNx
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-isatty v0.0.14 h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9Y=
 github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
-github.com/microsoft/go-mssqldb v0.18.0 h1:6Pf95ZIt8mjg3Bm374SlH7RFiez1nGy4xKKOiCw/zFE=
-github.com/microsoft/go-mssqldb v0.18.0/go.mod h1:ukJCBnnzLzpVF0qYRT+eg1e+eSwjeQ7IvenUv8QPook=
+github.com/microsoft/go-mssqldb v0.20.0 h1:jAfvs5TIR311fEuNgohFzMtUO0IcCHyI1kWAVws4ES8=
+github.com/microsoft/go-mssqldb v0.20.0/go.mod h1:ukJCBnnzLzpVF0qYRT+eg1e+eSwjeQ7IvenUv8QPook=
 github.com/mitchellh/cli v1.1.5 h1:OxRIeJXpAMztws/XHlN2vu6imG5Dpq+j61AzAX5fLng=
 github.com/mitchellh/cli v1.1.5/go.mod h1:v8+iFts2sPIKUV1ltktPXMCC8fumSKFItNcD2cLtRR4=
 github.com/mitchellh/copystructure v1.0.0/go.mod h1:SNtv71yrdKgLRyLFxmLdkAbkKEFWgYaq1OVrnRcwhnw=
