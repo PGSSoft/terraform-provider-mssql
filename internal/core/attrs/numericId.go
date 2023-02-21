@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/PGSSoft/terraform-provider-mssql/internal/sql"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-func NumericIdType[T sql.NumericObjectId]() types.StringTypable {
-	var t types.StringTypable
+func NumericIdType[T sql.NumericObjectId]() basetypes.StringTypable {
+	var t basetypes.StringTypable
 	t = numericIdType[T]{
 		compositeIdType{
 			elemCount: 1,
-			valueFactory: func(id CompositeId) types.StringValuable {
+			valueFactory: func(id CompositeId) basetypes.StringValuable {
 				id.attrType = &t
 				return NumericId[T]{id}
 			},
