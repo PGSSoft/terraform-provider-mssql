@@ -11,7 +11,9 @@ The provider can be used to configure objects in Microsoft SQL Server and Azure 
 ## Authentication methods
 
 ### SQL auth
+
 Provider username and password, using `sql_auth` field:
+
 ```terraform
 provider "mssql" {
   hostname = "localhost"
@@ -25,11 +27,13 @@ provider "mssql" {
 ```
 
 ### Azure AD
+
 In case of Azure SQL connections, Azure Active Directory auth tokens can be used to authenticate.
 
-<br/>
 #### Service Principal
+
 Provide client ID (a.k.a. application ID), secret and tenant ID, using `azure_auth` field:
+
 ```terraform
 provider "mssql" {
   hostname = "example.database.windows.net"
@@ -43,20 +47,22 @@ provider "mssql" {
 }
 ```
 
-<br/>
 #### Default chained credentials
+
 When `azure_auth` value is set to empty object (`{}`), the provider uses chained credentials built from `EnvironmentCredential` -> `ManagedIdentityCredential` -> `AzureCLICredential`.
+
 See [DefaultAzureCredential docs](https://github.com/Azure/azure-sdk-for-go/wiki/Set-up-Your-Environment-for-Authentication#configure-defaultazurecredential) for details.
 
-<br/>
 #### Environment variables
+
 When `azure_auth` value is set to empty object (`{}`) and following environment variables are set, the env variable values will be used for authentication, taking precedence over `DefaultAzureCredential`.
+
 - `ARM_CLIENT_ID`
 - `ARM_CLIENT_SECRET`
 - `ARM_TENANT_ID`
 
-<br/>
 Example:
+
 ```terraform
 provider "mssql" {
   hostname   = "example.database.windows.net"
@@ -66,6 +72,7 @@ provider "mssql" {
 ```
 
 ## Computed connection provider configuration
+
 Provider can be used, with certain limitations, with computed provider configuration. For example, provider's `hostname` can be sourced from `azurerm_mssql_server.fully_qualified_domain_name`. As shown in this [Azure SQL example](https://github.com/PGSSoft/terraform-provider-mssql/tree/main/examples/provider/azure_sql.tf)
 
 ~> **Warning** When connection details are computed and not known during plan execution (e.g. SQL Server resource returning FQDN is planned to be recreated), the state cannot contain any previously created `mssql_*` resources. In such case error will be reported, as the provider does not have enough information to generate correct plan.
