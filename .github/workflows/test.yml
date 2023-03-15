@@ -33,7 +33,7 @@ jobs:
           - arm
           - arm64
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         if: ${{ !(matrix.goos == 'darwin' && (matrix.goarch == '386' || matrix.goarch == 'arm')) }}
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -50,7 +50,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: actions/checkout@v3
@@ -73,7 +73,7 @@ jobs:
           - dockerAccTest
           - azureAccTest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: hashicorp/setup-terraform@v2
