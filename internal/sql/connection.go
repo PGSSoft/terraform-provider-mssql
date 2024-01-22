@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/kofalt/go-memoize"
 	"net/url"
 	"regexp"
 	"time"
+
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/kofalt/go-memoize"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	_ "github.com/microsoft/go-mssqldb"

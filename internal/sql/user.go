@@ -57,7 +57,7 @@ EXEC(@SQL)
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
+		if err := ExecContextWithRetry(ctx, conn, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
 			utils.AddError(ctx, "Failed to create user", err)
 			return nil
 		}

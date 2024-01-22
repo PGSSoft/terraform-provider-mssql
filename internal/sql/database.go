@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
+
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
 const NullDatabaseId = DatabaseId(-1)
