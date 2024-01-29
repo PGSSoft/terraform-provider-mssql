@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
@@ -37,7 +38,7 @@ func GetSchemaByName(ctx context.Context, db Database, name string) Schema {
 
 	utils.StopOnError(ctx).
 		Then(func() {
-			err := conn.QueryRowContext(ctx, "SELECT SCHEMA_ID(@p1)", name).Scan(&id)
+			err := QueryRowContextWithRetry(ctx, conn, "SELECT SCHEMA_ID(@p1)", name).Scan(&id)
 			utils.AddError(ctx, "Failed to fetch schema ID", err)
 		}).
 		Then(func() {
@@ -104,7 +105,7 @@ func (s schema) GetName(ctx context.Context) string {
 	conn := s.db.connect(ctx)
 
 	utils.StopOnError(ctx).Then(func() {
-		err := conn.QueryRowContext(ctx, "SELECT SCHEMA_NAME(@p1)", s.id).Scan(&name)
+		err := QueryRowContextWithRetry(ctx, conn, "SELECT SCHEMA_NAME(@p1)", s.id).Scan(&name)
 		utils.AddError(ctx, "Failed to fetch schema name", err)
 	})
 
@@ -120,7 +121,7 @@ func (s schema) GetOwnerId(ctx context.Context) GenericDatabasePrincipalId {
 	utils.StopOnError(ctx).
 		Then(func() { conn = s.db.connect(ctx) }).
 		Then(func() {
-			err := conn.QueryRowContext(ctx, "SELECT [principal_id] FROM sys.schemas WHERE [schema_id] = @p1", s.id).Scan(&ownerId)
+			err := QueryRowContextWithRetry(ctx, conn, "SELECT [principal_id] FROM sys.schemas WHERE [schema_id] = @p1", s.id).Scan(&ownerId)
 			utils.AddError(ctx, "Failed to fetch owner ID", err)
 		})
 

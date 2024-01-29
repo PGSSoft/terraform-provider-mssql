@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
@@ -60,7 +61,7 @@ func GetDatabaseRoleByName(ctx context.Context, db Database, name string) Databa
 		res := databaseRole{db: db}
 		id := sql.NullInt64{}
 
-		if err := conn.QueryRowContext(ctx, "SELECT DATABASE_PRINCIPAL_ID(@p1)", name).Scan(&id); err != nil {
+		if err := QueryRowContextWithRetry(ctx, conn, "SELECT DATABASE_PRINCIPAL_ID(@p1)", name).Scan(&id); err != nil {
 			utils.AddError(ctx, "Failed to resolve role ID", err)
 			return nil
 		}
@@ -109,7 +110,7 @@ func (d databaseRole) GetOwnerId(ctx context.Context) GenericDatabasePrincipalId
 	return WithConnection(ctx, d.db.connect, func(conn *sql.DB) GenericDatabasePrincipalId {
 		var res GenericDatabasePrincipalId
 
-		if err := conn.QueryRowContext(ctx, "SELECT owning_principal_id FROM sys.database_principals WHERE principal_id=@p1", d.id).Scan(&res); err != nil {
+		if err := QueryRowContextWithRetry(ctx, conn, "SELECT owning_principal_id FROM sys.database_principals WHERE principal_id=@p1", d.id).Scan(&res); err != nil {
 			utils.AddError(ctx, "Failed to retrieve owner ID", err)
 		}
 

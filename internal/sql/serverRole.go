@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
@@ -101,9 +102,9 @@ func (s serverRole) GetSettings(ctx context.Context) ServerRoleSettings {
 
 	utils.StopOnError(ctx).
 		Then(func() {
-			err := conn.
-				QueryRowContext(ctx, "SELECT [name], [owning_principal_id] FROM sys.server_principals WHERE [principal_id]=@p1", s.id).
-				Scan(&settings.Name, &settings.OwnerId)
+			err :=
+				QueryRowContextWithRetry(ctx, conn, "SELECT [name], [owning_principal_id] FROM sys.server_principals WHERE [principal_id]=@p1", s.id).
+					Scan(&settings.Name, &settings.OwnerId)
 
 			utils.AddError(ctx, "Failed to retrieve server role settings", err)
 		})
@@ -141,7 +142,7 @@ func (s serverRole) HasMember(ctx context.Context, id GenericServerPrincipalId) 
 
 	utils.StopOnError(ctx).
 		Then(func() {
-			err := conn.QueryRowContext(ctx, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2", s.id, id).Err()
+			err := QueryRowContextWithRetry(ctx, conn, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2", s.id, id).Err()
 
 			switch err {
 			case sql.ErrNoRows:

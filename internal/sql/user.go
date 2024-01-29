@@ -74,7 +74,7 @@ func GetUserByName(ctx context.Context, db Database, name string) User {
 	return WithConnection(ctx, db.connect, func(conn *sql.DB) User {
 		user := user{db: db}
 		id := sql.NullInt32{}
-		err := conn.QueryRowContext(ctx, "SELECT USER_ID(@p1)", name).Scan(&id)
+		err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_ID(@p1)", name).Scan(&id)
 		if err != nil {
 			utils.AddError(ctx, "Failed to resolve user ID", err)
 			return nil
@@ -133,7 +133,7 @@ func (u user) GetSettings(ctx context.Context) UserSettings {
 	return WithConnection(ctx, u.db.connect, func(conn *sql.DB) UserSettings {
 		var userType string
 
-		err := conn.QueryRowContext(ctx, "SELECT [name], CONVERT(VARCHAR(85), [sid], 1), [type], CONVERT(VARCHAR(36), CONVERT(UNIQUEIDENTIFIER, [sid], 1), 1) FROM sys.database_principals WHERE [principal_id]=@p1", u.id).
+		err := QueryRowContextWithRetry(ctx, conn, "SELECT [name], CONVERT(VARCHAR(85), [sid], 1), [type], CONVERT(VARCHAR(36), CONVERT(UNIQUEIDENTIFIER, [sid], 1), 1) FROM sys.database_principals WHERE [principal_id]=@p1", u.id).
 			Scan(&settings.Name, &settings.LoginId, &userType, &settings.AADObjectId)
 		if err != nil {
 			utils.AddError(ctx, "Failed to retrieve user settings", err)
@@ -195,7 +195,7 @@ func (u user) UpdateSettings(ctx context.Context, settings UserSettings) {
 
 func (u user) getName(ctx context.Context, conn *sql.DB) string {
 	var name string
-	err := conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", u.id).Scan(&name)
+	err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME(@p1)", u.id).Scan(&name)
 	if err != nil {
 		utils.AddError(ctx, "Failed to resolve user name", err)
 	}

@@ -70,7 +70,7 @@ func GetDatabase(_ context.Context, conn Connection, id DatabaseId) Database {
 func GetDatabaseByName(ctx context.Context, conn Connection, name string) Database {
 	id := DatabaseId(0)
 
-	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
+	if err := QueryRowContextWithRetry(ctx, conn.getSqlConnection(ctx), "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
@@ -274,9 +274,9 @@ func (db *database) RevokePermission(ctx context.Context, id GenericDatabasePrin
 
 func (db *database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
 	var settings DatabaseSettings
-	err := db.conn.getSqlConnection(ctx).
-		QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
-		Scan(&settings.Name, &settings.Collation)
+	err :=
+		QueryRowContextWithRetry(ctx, db.conn.getSqlConnection(ctx), "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
+			Scan(&settings.Name, &settings.Collation)
 	return settings, err
 }
 
@@ -300,9 +300,9 @@ func (db *database) getUserName(ctx context.Context, id GenericDatabasePrincipal
 		Then(func() {
 			var err error
 			if id == EmptyDatabasePrincipalId {
-				err = conn.QueryRowContext(ctx, "SELECT USER_NAME()").Scan(&name)
+				err = QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME()").Scan(&name)
 			} else {
-				err = conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", id).Scan(&name)
+				err = QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME(@p1)", id).Scan(&name)
 			}
 
 			if err != nil {

@@ -74,7 +74,7 @@ func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnost
 
 func (c *connection) IsAzure(ctx context.Context) bool {
 	var edition string
-	if err := c.conn.QueryRowContext(ctx, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
+	if err := QueryRowContextWithRetry(ctx, c.conn, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
 		utils.AddError(ctx, "Failed to determine server edition", err)
 	}
 	return azureSQLEditionPattern.MatchString(edition)
@@ -200,14 +200,14 @@ func (c *connection) getDBSqlConnection(ctx context.Context, dbName string) *sql
 
 func (c *connection) lookupServerPrincipalName(ctx context.Context, id GenericServerPrincipalId) string {
 	var name string
-	err := c.conn.QueryRowContext(ctx, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1", id).Scan(&name)
+	err := QueryRowContextWithRetry(ctx, c.conn, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1", id).Scan(&name)
 	utils.AddError(ctx, "Failed to lookup server principal name", err)
 	return name
 }
 
 func (c *connection) lookupServerPrincipalId(ctx context.Context, name string) GenericServerPrincipalId {
 	var id GenericServerPrincipalId
-	err := c.conn.QueryRowContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", name).Scan(&id)
+	err := QueryRowContextWithRetry(ctx, c.conn, "SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", name).Scan(&id)
 	utils.AddError(ctx, "Failed to lookup server principal ID", err)
 	return id
 }
