@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
@@ -48,7 +49,7 @@ func GetServerRoles(ctx context.Context, conn Connection) ServerRoles {
 		return nil
 	}
 
-	res, err := sqlConn.QueryContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'")
+	res, err := QueryContextWithRetry(ctx, sqlConn, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'")
 
 	roles := ServerRoles{}
 	switch err {
@@ -101,9 +102,9 @@ func (s serverRole) GetSettings(ctx context.Context) ServerRoleSettings {
 
 	utils.StopOnError(ctx).
 		Then(func() {
-			err := conn.
-				QueryRowContext(ctx, "SELECT [name], [owning_principal_id] FROM sys.server_principals WHERE [principal_id]=@p1", s.id).
-				Scan(&settings.Name, &settings.OwnerId)
+			err :=
+				QueryRowContextWithRetry(ctx, conn, "SELECT [name], [owning_principal_id] FROM sys.server_principals WHERE [principal_id]=@p1", s.id).
+					Scan(&settings.Name, &settings.OwnerId)
 
 			utils.AddError(ctx, "Failed to retrieve server role settings", err)
 		})
@@ -118,7 +119,7 @@ func (s serverRole) Rename(ctx context.Context, name string) {
 	utils.StopOnError(ctx).
 		Then(func() { oldName = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id)) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] WITH NAME = [%s]", oldName, name))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] WITH NAME = [%s]", oldName, name))
 			utils.AddError(ctx, "Failed to rename server role", err)
 		})
 }
@@ -130,7 +131,7 @@ func (s serverRole) Drop(ctx context.Context) {
 	utils.StopOnError(ctx).
 		Then(func() { name = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id)) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP SERVER ROLE [%s]", name))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP SERVER ROLE [%s]", name))
 			utils.AddError(ctx, "Failed to drop server role", err)
 		})
 }
@@ -141,7 +142,7 @@ func (s serverRole) HasMember(ctx context.Context, id GenericServerPrincipalId) 
 
 	utils.StopOnError(ctx).
 		Then(func() {
-			err := conn.QueryRowContext(ctx, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2", s.id, id).Err()
+			err := QueryRowContextWithRetry(ctx, conn, "SELECT 1 FROM sys.server_role_members WHERE [role_principal_id]=@p1 AND [member_principal_id]=@p2", s.id, id).Err()
 
 			switch err {
 			case sql.ErrNoRows:
@@ -166,7 +167,7 @@ func (s serverRole) AddMember(ctx context.Context, id GenericServerPrincipalId) 
 			memberName = s.conn.lookupServerPrincipalName(ctx, id)
 		}).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] ADD MEMBER [%s]", roleName, memberName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] ADD MEMBER [%s]", roleName, memberName))
 			utils.AddError(ctx, "Failed to add role member", err)
 		})
 }
@@ -181,7 +182,7 @@ func (s serverRole) RemoveMember(ctx context.Context, id GenericServerPrincipalI
 			memberName = s.conn.lookupServerPrincipalName(ctx, id)
 		}).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
 			utils.AddError(ctx, "Failed to remove role member", err)
 		})
 }
@@ -193,7 +194,7 @@ func (s serverRole) GetMembers(ctx context.Context) ServerRoleMembers {
 	}
 
 	result := ServerRoleMembers{}
-	rs, err := conn.QueryContext(ctx, `
+	rs, err := QueryContextWithRetry(ctx, conn, `
 SELECT [principal_id], [name], [type] FROM sys.server_role_members
 INNER JOIN sys.server_principals ON [member_principal_id] = [principal_id]
 WHERE [role_principal_id]=@p1 AND [type] IN ('S', 'R')`, s.id)

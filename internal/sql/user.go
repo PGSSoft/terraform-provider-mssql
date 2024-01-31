@@ -57,7 +57,7 @@ EXEC(@SQL)
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
 			utils.AddError(ctx, "Failed to create user", err)
 			return nil
 		}
@@ -74,7 +74,7 @@ func GetUserByName(ctx context.Context, db Database, name string) User {
 	return WithConnection(ctx, db.connect, func(conn *sql.DB) User {
 		user := user{db: db}
 		id := sql.NullInt32{}
-		err := conn.QueryRowContext(ctx, "SELECT USER_ID(@p1)", name).Scan(&id)
+		err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_ID(@p1)", name).Scan(&id)
 		if err != nil {
 			utils.AddError(ctx, "Failed to resolve user ID", err)
 			return nil
@@ -96,7 +96,7 @@ func GetUsers(ctx context.Context, db Database) map[UserId]User {
 	return WithConnection(ctx, db.connect, func(conn *sql.DB) map[UserId]User {
 		result := map[UserId]User{}
 
-		switch res, err := conn.QueryContext(ctx, "SELECT [principal_id] FROM sys.database_principals WHERE [type] IN ('S', 'E', 'X') AND [sid] IS NOT NULL"); err {
+		switch res, err := QueryContextWithRetry(ctx, conn, "SELECT [principal_id] FROM sys.database_principals WHERE [type] IN ('S', 'E', 'X') AND [sid] IS NOT NULL"); err {
 		case sql.ErrNoRows: //ignore
 		case nil:
 			for res.Next() {
@@ -133,7 +133,7 @@ func (u user) GetSettings(ctx context.Context) UserSettings {
 	return WithConnection(ctx, u.db.connect, func(conn *sql.DB) UserSettings {
 		var userType string
 
-		err := conn.QueryRowContext(ctx, "SELECT [name], CONVERT(VARCHAR(85), [sid], 1), [type], CONVERT(VARCHAR(36), CONVERT(UNIQUEIDENTIFIER, [sid], 1), 1) FROM sys.database_principals WHERE [principal_id]=@p1", u.id).
+		err := QueryRowContextWithRetry(ctx, conn, "SELECT [name], CONVERT(VARCHAR(85), [sid], 1), [type], CONVERT(VARCHAR(36), CONVERT(UNIQUEIDENTIFIER, [sid], 1), 1) FROM sys.database_principals WHERE [principal_id]=@p1", u.id).
 			Scan(&settings.Name, &settings.LoginId, &userType, &settings.AADObjectId)
 		if err != nil {
 			utils.AddError(ctx, "Failed to retrieve user settings", err)
@@ -163,7 +163,7 @@ func (u user) Drop(ctx context.Context) {
 			return nil
 		}
 
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP USER [%s]", name))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP USER [%s]", name))
 		if err != nil {
 			utils.AddError(ctx, "Failed to drop user", err)
 		}
@@ -184,7 +184,7 @@ func (u user) UpdateSettings(ctx context.Context, settings UserSettings) {
 			return nil
 		}
 
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER USER [%s] WITH NAME=[%s], LOGIN=[%s]", name, settings.Name, loginName))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER USER [%s] WITH NAME=[%s], LOGIN=[%s]", name, settings.Name, loginName))
 		if err != nil {
 			utils.AddError(ctx, "Failed to update user", err)
 		}
@@ -195,7 +195,7 @@ func (u user) UpdateSettings(ctx context.Context, settings UserSettings) {
 
 func (u user) getName(ctx context.Context, conn *sql.DB) string {
 	var name string
-	err := conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", u.id).Scan(&name)
+	err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME(@p1)", u.id).Scan(&name)
 	if err != nil {
 		utils.AddError(ctx, "Failed to resolve user name", err)
 	}

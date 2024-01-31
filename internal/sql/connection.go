@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
-	"github.com/kofalt/go-memoize"
 	"net/url"
 	"regexp"
 	"time"
+
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
+	"github.com/kofalt/go-memoize"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	_ "github.com/microsoft/go-mssqldb"
@@ -73,14 +74,14 @@ func (cd ConnectionDetails) Open(ctx context.Context) (Connection, diag.Diagnost
 
 func (c *connection) IsAzure(ctx context.Context) bool {
 	var edition string
-	if err := c.conn.QueryRowContext(ctx, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
+	if err := QueryRowContextWithRetry(ctx, c.conn, "SELECT SERVERPROPERTY('edition')").Scan(&edition); err != nil {
 		utils.AddError(ctx, "Failed to determine server edition", err)
 	}
 	return azureSQLEditionPattern.MatchString(edition)
 }
 
 func (c *connection) GetPermissions(ctx context.Context, principalId GenericServerPrincipalId) ServerPermissions {
-	res, err := c.conn.QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1", principalId)
+	res, err := QueryContextWithRetry(ctx, c.conn, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1", principalId)
 	perms := ServerPermissions{}
 
 	switch err {
@@ -144,7 +145,7 @@ func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, di
 }
 
 func (c *connection) exec(ctx context.Context, query string, args ...any) sql.Result {
-	res, err := c.conn.ExecContext(ctx, query, args...)
+	res, err := ExecContextWithRetry(ctx, c.conn, query, args...)
 
 	if err != nil {
 		utils.AddError(ctx, "Could not execute SQL", err)
@@ -199,14 +200,14 @@ func (c *connection) getDBSqlConnection(ctx context.Context, dbName string) *sql
 
 func (c *connection) lookupServerPrincipalName(ctx context.Context, id GenericServerPrincipalId) string {
 	var name string
-	err := c.conn.QueryRowContext(ctx, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1", id).Scan(&name)
+	err := QueryRowContextWithRetry(ctx, c.conn, "SELECT [name] FROM sys.server_principals WHERE [principal_id]=@p1", id).Scan(&name)
 	utils.AddError(ctx, "Failed to lookup server principal name", err)
 	return name
 }
 
 func (c *connection) lookupServerPrincipalId(ctx context.Context, name string) GenericServerPrincipalId {
 	var id GenericServerPrincipalId
-	err := c.conn.QueryRowContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", name).Scan(&id)
+	err := QueryRowContextWithRetry(ctx, c.conn, "SELECT [principal_id] FROM sys.server_principals WHERE [name]=@p1", name).Scan(&id)
 	utils.AddError(ctx, "Failed to lookup server principal ID", err)
 	return id
 }

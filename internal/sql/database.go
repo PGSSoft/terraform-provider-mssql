@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"strings"
+
+	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
 const NullDatabaseId = DatabaseId(-1)
@@ -69,7 +70,7 @@ func GetDatabase(_ context.Context, conn Connection, id DatabaseId) Database {
 func GetDatabaseByName(ctx context.Context, conn Connection, name string) Database {
 	id := DatabaseId(0)
 
-	if err := conn.getSqlConnection(ctx).QueryRowContext(ctx, "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
+	if err := QueryRowContextWithRetry(ctx, conn.getSqlConnection(ctx), "SELECT database_id FROM sys.databases WHERE [name] = @p1", name).Scan(&id); err != nil {
 		utils.AddError(ctx, fmt.Sprintf("Failed to retrieve DB ID for name '%s'", name), err)
 		return nil
 	}
@@ -81,7 +82,7 @@ func GetDatabases(ctx context.Context, conn Connection) map[DatabaseId]Database 
 	const errorSummary = "Failed to retrieve list of DBs"
 	result := map[DatabaseId]Database{}
 
-	switch rows, err := conn.getSqlConnection(ctx).QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
+	switch rows, err := QueryContextWithRetry(ctx, conn.getSqlConnection(ctx), "SELECT [database_id] FROM sys.databases"); err {
 	case sql.ErrNoRows: // ignore
 	case nil:
 		for rows.Next() {
@@ -151,7 +152,7 @@ func (db *database) Query(ctx context.Context, script string) []map[string]strin
 		return nil
 	}
 
-	rows, err := conn.QueryContext(ctx, script)
+	rows, err := QueryContextWithRetry(ctx, conn, script)
 
 	if err != nil {
 		utils.AddError(ctx, "Failed to execute get state script", err)
@@ -191,7 +192,7 @@ func (db *database) Query(ctx context.Context, script string) []map[string]strin
 }
 
 func (db *database) Exec(ctx context.Context, script string) {
-	if _, err := db.connect(ctx).ExecContext(ctx, script); err != nil {
+	if _, err := ExecContextWithRetry(ctx, db.connect(ctx), script); err != nil {
 		utils.AddError(ctx, "Failed to execute SQL script", err)
 	}
 }
@@ -203,8 +204,8 @@ func (db *database) GetPermissions(ctx context.Context, id GenericDatabasePrinci
 		return nil
 	}
 
-	res, err := conn.
-		QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1", id)
+	res, err :=
+		QueryContextWithRetry(ctx, conn, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1", id)
 
 	perms := DatabasePermissions{}
 
@@ -238,7 +239,7 @@ func (db *database) GrantPermission(ctx context.Context, id GenericDatabasePrinc
 				stat += " WITH GRANT OPTION"
 			}
 
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to grant permission", err)
 		})
 }
@@ -254,7 +255,7 @@ func (db *database) UpdatePermission(ctx context.Context, id GenericDatabasePrin
 				stat = fmt.Sprintf("REVOKE GRANT OPTION FOR %s TO [%s]", permission.Name, userName)
 			}
 
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to modify permission grant", err)
 		})
 }
@@ -266,16 +267,16 @@ func (db *database) RevokePermission(ctx context.Context, id GenericDatabasePrin
 	utils.StopOnError(ctx).
 		Then(func() {
 			stat := fmt.Sprintf("REVOKE %s TO [%s] CASCADE", permissionName, userName)
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to revoke permission", err)
 		})
 }
 
 func (db *database) getSettingsRaw(ctx context.Context) (DatabaseSettings, error) {
 	var settings DatabaseSettings
-	err := db.conn.getSqlConnection(ctx).
-		QueryRowContext(ctx, "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
-		Scan(&settings.Name, &settings.Collation)
+	err :=
+		QueryRowContextWithRetry(ctx, db.conn.getSqlConnection(ctx), "SELECT [name], collation_name FROM sys.databases WHERE [database_id] = @p1", db.id).
+			Scan(&settings.Name, &settings.Collation)
 	return settings, err
 }
 
@@ -299,9 +300,9 @@ func (db *database) getUserName(ctx context.Context, id GenericDatabasePrincipal
 		Then(func() {
 			var err error
 			if id == EmptyDatabasePrincipalId {
-				err = conn.QueryRowContext(ctx, "SELECT USER_NAME()").Scan(&name)
+				err = QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME()").Scan(&name)
 			} else {
-				err = conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", id).Scan(&name)
+				err = QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME(@p1)", id).Scan(&name)
 			}
 
 			if err != nil {

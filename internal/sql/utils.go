@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 )
 
@@ -19,7 +20,7 @@ func WithConnection[T any](ctx context.Context, connectionFactory func(context.C
 func getPrincipalName[T DatabasePrincipalId](ctx context.Context, conn *sql.DB, id T) string {
 	var res string
 
-	if err := conn.QueryRowContext(ctx, "SELECT USER_NAME(@p1)", id).Scan(&res); err != nil {
+	if err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME(@p1)", id).Scan(&res); err != nil {
 		utils.AddError(ctx, "Failed to retrieve DB principal name", err)
 	}
 
@@ -29,7 +30,7 @@ func getPrincipalName[T DatabasePrincipalId](ctx context.Context, conn *sql.DB, 
 func getCurrentUserName(ctx context.Context, conn *sql.DB) string {
 	var res string
 
-	if err := conn.QueryRowContext(ctx, "SELECT USER_NAME()").Scan(&res); err != nil {
+	if err := QueryRowContextWithRetry(ctx, conn, "SELECT USER_NAME()").Scan(&res); err != nil {
 		utils.AddError(ctx, "Failed to retrieve current user name", err)
 	}
 
