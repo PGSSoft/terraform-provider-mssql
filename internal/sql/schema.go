@@ -55,7 +55,7 @@ func GetSchemas(ctx context.Context, db Database) map[SchemaId]Schema {
 	schemas := map[SchemaId]Schema{}
 
 	utils.StopOnError(ctx).Then(func() {
-		res, err := conn.QueryContext(ctx, "SELECT [schema_id] FROM sys.schemas")
+		res, err := QueryContextWithRetry(ctx, conn, "SELECT [schema_id] FROM sys.schemas")
 
 		switch err {
 		case sql.ErrNoRows:
@@ -155,7 +155,7 @@ func (s schema) GetPermissions(ctx context.Context, principalId GenericDatabaseP
 		return nil
 	}
 
-	res, err := conn.QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class]=3 AND [major_id]=@p1 AND [grantee_principal_id]=@p2", s.id, principalId)
+	res, err := QueryContextWithRetry(ctx, conn, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class]=3 AND [major_id]=@p1 AND [grantee_principal_id]=@p2", s.id, principalId)
 
 	perms := SchemaPermissions{}
 

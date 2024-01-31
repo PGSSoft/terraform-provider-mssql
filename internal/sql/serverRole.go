@@ -49,7 +49,7 @@ func GetServerRoles(ctx context.Context, conn Connection) ServerRoles {
 		return nil
 	}
 
-	res, err := sqlConn.QueryContext(ctx, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'")
+	res, err := QueryContextWithRetry(ctx, sqlConn, "SELECT [principal_id] FROM sys.server_principals WHERE [type]='R'")
 
 	roles := ServerRoles{}
 	switch err {
@@ -194,7 +194,7 @@ func (s serverRole) GetMembers(ctx context.Context) ServerRoleMembers {
 	}
 
 	result := ServerRoleMembers{}
-	rs, err := conn.QueryContext(ctx, `
+	rs, err := QueryContextWithRetry(ctx, conn, `
 SELECT [principal_id], [name], [type] FROM sys.server_role_members
 INNER JOIN sys.server_principals ON [member_principal_id] = [principal_id]
 WHERE [role_principal_id]=@p1 AND [type] IN ('S', 'R')`, s.id)

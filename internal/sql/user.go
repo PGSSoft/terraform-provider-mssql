@@ -96,7 +96,7 @@ func GetUsers(ctx context.Context, db Database) map[UserId]User {
 	return WithConnection(ctx, db.connect, func(conn *sql.DB) map[UserId]User {
 		result := map[UserId]User{}
 
-		switch res, err := conn.QueryContext(ctx, "SELECT [principal_id] FROM sys.database_principals WHERE [type] IN ('S', 'E', 'X') AND [sid] IS NOT NULL"); err {
+		switch res, err := QueryContextWithRetry(ctx, conn, "SELECT [principal_id] FROM sys.database_principals WHERE [type] IN ('S', 'E', 'X') AND [sid] IS NOT NULL"); err {
 		case sql.ErrNoRows: //ignore
 		case nil:
 			for res.Next() {

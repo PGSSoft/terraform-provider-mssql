@@ -82,7 +82,7 @@ func GetDatabaseRoles(ctx context.Context, db Database) map[DatabaseRoleId]Datab
 	return WithConnection(ctx, db.connect, func(conn *sql.DB) map[DatabaseRoleId]DatabaseRole {
 		res := map[DatabaseRoleId]DatabaseRole{}
 
-		switch queryRes, err := conn.QueryContext(ctx, "SELECT [principal_id] FROM sys.database_principals WHERE [type] = 'R'"); err {
+		switch queryRes, err := QueryContextWithRetry(ctx, conn, "SELECT [principal_id] FROM sys.database_principals WHERE [type] = 'R'"); err {
 		case sql.ErrNoRows: //ignore
 		case nil:
 			for queryRes.Next() {
@@ -221,7 +221,7 @@ func (d databaseRole) GetMembers(ctx context.Context) map[GenericDatabasePrincip
 	return WithConnection(ctx, d.db.connect, func(conn *sql.DB) map[GenericDatabasePrincipalId]DatabaseRoleMember {
 		res := map[GenericDatabasePrincipalId]DatabaseRoleMember{}
 
-		sqlRes, err := conn.QueryContext(ctx, `
+		sqlRes, err := QueryContextWithRetry(ctx, conn, `
 SELECT principal_id, [name], [type] 
 FROM sys.database_principals 
 	INNER JOIN sys.database_role_members ON principal_id = member_principal_id

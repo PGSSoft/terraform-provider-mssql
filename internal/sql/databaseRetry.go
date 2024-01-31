@@ -53,6 +53,23 @@ func ExecContextWithRetry(ctx context.Context, conn *sql.DB, query string, args 
 	return res, nil
 }
 
+// This is "conn.QueryContext" wrapped with a retry mechanism for retrying transient
+// errors. Should behave in all other regards the same as the original.
+func QueryContextWithRetry(ctx context.Context, conn *sql.DB, query string, args ...any) (rows *sql.Rows, err error) {
+	backoff := ExpBackoff()
+
+	if err := retry.Do(ctx, backoff,
+		func(ctx context.Context) error {
+			if rows, err = conn.QueryContext(ctx, query, args...); err != nil {
+				return CheckIfRetryable(err)
+			}
+			return nil
+		}); err != nil {
+		return rows, err
+	}
+	return rows, nil
+}
+
 // This is "conn.QueryRowContext" wrapped with a retry mechanism for retrying transient
 // errors. Should behave in all other regards the same as the original.
 func QueryRowContextWithRetry(ctx context.Context, conn *sql.DB, query string, args ...any) *sql.Row {

@@ -81,7 +81,7 @@ func (c *connection) IsAzure(ctx context.Context) bool {
 }
 
 func (c *connection) GetPermissions(ctx context.Context, principalId GenericServerPrincipalId) ServerPermissions {
-	res, err := c.conn.QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1", principalId)
+	res, err := QueryContextWithRetry(ctx, c.conn, "SELECT [permission_name], [state] FROM sys.server_permissions WHERE [class]=100 AND [grantee_principal_id]=@p1", principalId)
 	perms := ServerPermissions{}
 
 	switch err {

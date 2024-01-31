@@ -114,7 +114,7 @@ func GetSqlLogins(ctx context.Context, conn Connection) map[LoginId]SqlLogin {
 	const errorSummary = "Failed to retrieve list of SQL logins"
 	result := map[LoginId]SqlLogin{}
 
-	switch rows, err := conn.getSqlConnection(ctx).QueryContext(ctx, "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins"); err {
+	switch rows, err := QueryContextWithRetry(ctx, conn.getSqlConnection(ctx), "SELECT CONVERT(VARCHAR(85), [sid], 1) FROM sys.sql_logins"); err {
 	case sql.ErrNoRows: // ignore
 	case nil:
 		for rows.Next() {

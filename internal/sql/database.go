@@ -82,7 +82,7 @@ func GetDatabases(ctx context.Context, conn Connection) map[DatabaseId]Database 
 	const errorSummary = "Failed to retrieve list of DBs"
 	result := map[DatabaseId]Database{}
 
-	switch rows, err := conn.getSqlConnection(ctx).QueryContext(ctx, "SELECT [database_id] FROM sys.databases"); err {
+	switch rows, err := QueryContextWithRetry(ctx, conn.getSqlConnection(ctx), "SELECT [database_id] FROM sys.databases"); err {
 	case sql.ErrNoRows: // ignore
 	case nil:
 		for rows.Next() {
@@ -152,7 +152,7 @@ func (db *database) Query(ctx context.Context, script string) []map[string]strin
 		return nil
 	}
 
-	rows, err := conn.QueryContext(ctx, script)
+	rows, err := QueryContextWithRetry(ctx, conn, script)
 
 	if err != nil {
 		utils.AddError(ctx, "Failed to execute get state script", err)
@@ -204,8 +204,8 @@ func (db *database) GetPermissions(ctx context.Context, id GenericDatabasePrinci
 		return nil
 	}
 
-	res, err := conn.
-		QueryContext(ctx, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1", id)
+	res, err :=
+		QueryContextWithRetry(ctx, conn, "SELECT [permission_name], [state] FROM sys.database_permissions WHERE [class] = 0 AND [state] IN ('G', 'W') AND [grantee_principal_id] = @p1", id)
 
 	perms := DatabasePermissions{}
 
