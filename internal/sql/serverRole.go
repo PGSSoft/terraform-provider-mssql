@@ -119,7 +119,7 @@ func (s serverRole) Rename(ctx context.Context, name string) {
 	utils.StopOnError(ctx).
 		Then(func() { oldName = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id)) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] WITH NAME = [%s]", oldName, name))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] WITH NAME = [%s]", oldName, name))
 			utils.AddError(ctx, "Failed to rename server role", err)
 		})
 }
@@ -131,7 +131,7 @@ func (s serverRole) Drop(ctx context.Context) {
 	utils.StopOnError(ctx).
 		Then(func() { name = s.conn.lookupServerPrincipalName(ctx, GenericServerPrincipalId(s.id)) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP SERVER ROLE [%s]", name))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP SERVER ROLE [%s]", name))
 			utils.AddError(ctx, "Failed to drop server role", err)
 		})
 }
@@ -167,7 +167,7 @@ func (s serverRole) AddMember(ctx context.Context, id GenericServerPrincipalId) 
 			memberName = s.conn.lookupServerPrincipalName(ctx, id)
 		}).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] ADD MEMBER [%s]", roleName, memberName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] ADD MEMBER [%s]", roleName, memberName))
 			utils.AddError(ctx, "Failed to add role member", err)
 		})
 }
@@ -182,7 +182,7 @@ func (s serverRole) RemoveMember(ctx context.Context, id GenericServerPrincipalI
 			memberName = s.conn.lookupServerPrincipalName(ctx, id)
 		}).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER SERVER ROLE [%s] DROP MEMBER [%s]", roleName, memberName))
 			utils.AddError(ctx, "Failed to remove role member", err)
 		})
 }

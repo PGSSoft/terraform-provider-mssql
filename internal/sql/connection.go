@@ -145,7 +145,7 @@ func (cd ConnectionDetails) getConnectionString(ctx context.Context) (string, di
 }
 
 func (c *connection) exec(ctx context.Context, query string, args ...any) sql.Result {
-	res, err := c.conn.ExecContext(ctx, query, args...)
+	res, err := ExecContextWithRetry(ctx, c.conn, query, args...)
 
 	if err != nil {
 		utils.AddError(ctx, "Could not execute SQL", err)

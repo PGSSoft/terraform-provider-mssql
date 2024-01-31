@@ -57,7 +57,7 @@ EXEC(@SQL)
 			return nil
 		}
 
-		if err := ExecContextWithRetry(ctx, conn, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, sqlStat.String(), settings.Name, settings.AADObjectId); err != nil {
 			utils.AddError(ctx, "Failed to create user", err)
 			return nil
 		}
@@ -163,7 +163,7 @@ func (u user) Drop(ctx context.Context) {
 			return nil
 		}
 
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP USER [%s]", name))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP USER [%s]", name))
 		if err != nil {
 			utils.AddError(ctx, "Failed to drop user", err)
 		}
@@ -184,7 +184,7 @@ func (u user) UpdateSettings(ctx context.Context, settings UserSettings) {
 			return nil
 		}
 
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER USER [%s] WITH NAME=[%s], LOGIN=[%s]", name, settings.Name, loginName))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER USER [%s] WITH NAME=[%s], LOGIN=[%s]", name, settings.Name, loginName))
 		if err != nil {
 			utils.AddError(ctx, "Failed to update user", err)
 		}

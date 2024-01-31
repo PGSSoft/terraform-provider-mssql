@@ -80,7 +80,7 @@ func CreateSchema[T DatabasePrincipalId](ctx context.Context, db Database, name 
 	ownerName := db.getUserName(ctx, GenericDatabasePrincipalId(ownerId))
 
 	utils.StopOnError(ctx).Then(func() {
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE SCHEMA [%s] AUTHORIZATION [%s]", name, ownerName))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("CREATE SCHEMA [%s] AUTHORIZATION [%s]", name, ownerName))
 		utils.AddError(ctx, "Failed to create schema", err)
 	})
 
@@ -134,7 +134,7 @@ func (s schema) ChangeOwner(ctx context.Context, ownerId GenericDatabasePrincipa
 	conn := s.db.connect(ctx)
 
 	utils.StopOnError(ctx).Then(func() {
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER AUTHORIZATION ON schema::[%s] TO [%s]", schemaName, ownerName))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER AUTHORIZATION ON schema::[%s] TO [%s]", schemaName, ownerName))
 		utils.AddError(ctx, "Failed to change owner", err)
 	})
 }
@@ -144,7 +144,7 @@ func (s schema) Drop(ctx context.Context) {
 	conn := s.db.connect(ctx)
 
 	utils.StopOnError(ctx).Then(func() {
-		_, err := conn.ExecContext(ctx, fmt.Sprintf("DROP SCHEMA [%s]", schemaName))
+		_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP SCHEMA [%s]", schemaName))
 		utils.AddError(ctx, "Failed to drop schema", err)
 	})
 }
@@ -191,7 +191,7 @@ func (s schema) GrantPermission(ctx context.Context, principalId GenericDatabase
 			if permission.WithGrantOption {
 				stat += " WITH GRANT OPTION"
 			}
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to grant schema permission", err)
 		})
 }
@@ -209,7 +209,7 @@ func (s schema) UpdatePermission(ctx context.Context, principalId GenericDatabas
 	utils.StopOnError(ctx).
 		Then(func() { conn = s.db.connect(ctx) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("REVOKE GRANT OPTION FOR %s ON schema::[%s] FROM [%s] CASCADE", permission.Name, schemaName, principalName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("REVOKE GRANT OPTION FOR %s ON schema::[%s] FROM [%s] CASCADE", permission.Name, schemaName, principalName))
 			utils.AddError(ctx, "Failed to revoke grant option", err)
 		})
 }
@@ -222,7 +222,7 @@ func (s schema) RevokePermission(ctx context.Context, principalId GenericDatabas
 	utils.StopOnError(ctx).
 		Then(func() { conn = s.db.connect(ctx) }).
 		Then(func() {
-			_, err := conn.ExecContext(ctx, fmt.Sprintf("REVOKE %s ON schema::[%s] FROM [%s] CASCADE", permission, schemaName, principalName))
+			_, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("REVOKE %s ON schema::[%s] FROM [%s] CASCADE", permission, schemaName, principalName))
 			utils.AddError(ctx, "Failed to revoke permission", err)
 		})
 }

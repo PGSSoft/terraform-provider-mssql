@@ -192,7 +192,7 @@ func (db *database) Query(ctx context.Context, script string) []map[string]strin
 }
 
 func (db *database) Exec(ctx context.Context, script string) {
-	if _, err := db.connect(ctx).ExecContext(ctx, script); err != nil {
+	if _, err := ExecContextWithRetry(ctx, db.connect(ctx), script); err != nil {
 		utils.AddError(ctx, "Failed to execute SQL script", err)
 	}
 }
@@ -239,7 +239,7 @@ func (db *database) GrantPermission(ctx context.Context, id GenericDatabasePrinc
 				stat += " WITH GRANT OPTION"
 			}
 
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to grant permission", err)
 		})
 }
@@ -255,7 +255,7 @@ func (db *database) UpdatePermission(ctx context.Context, id GenericDatabasePrin
 				stat = fmt.Sprintf("REVOKE GRANT OPTION FOR %s TO [%s]", permission.Name, userName)
 			}
 
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to modify permission grant", err)
 		})
 }
@@ -267,7 +267,7 @@ func (db *database) RevokePermission(ctx context.Context, id GenericDatabasePrin
 	utils.StopOnError(ctx).
 		Then(func() {
 			stat := fmt.Sprintf("REVOKE %s TO [%s] CASCADE", permissionName, userName)
-			_, err := conn.ExecContext(ctx, stat)
+			_, err := ExecContextWithRetry(ctx, conn, stat)
 			utils.AddError(ctx, "Failed to revoke permission", err)
 		})
 }

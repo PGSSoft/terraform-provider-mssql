@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
+
 	"github.com/PGSSoft/terraform-provider-mssql/internal/utils"
 	"github.com/stretchr/testify/mock"
 )
@@ -39,7 +40,7 @@ func (c *connectionMock) RevokePermission(ctx context.Context, principalId Gener
 }
 
 func (c *connectionMock) exec(ctx context.Context, query string, args ...any) sql.Result {
-	res, err := c.db.ExecContext(ctx, query, args...)
+	res, err := ExecContextWithRetry(ctx, c.db, query, args...)
 	if err != nil {
 		utils.AddError(ctx, "mock error", err)
 	}

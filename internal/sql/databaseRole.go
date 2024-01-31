@@ -43,7 +43,7 @@ func CreateDatabaseRole[T DatabasePrincipalId](ctx context.Context, db Database,
 			stat += fmt.Sprintf(" AUTHORIZATION [%s]", ownerName)
 		}
 
-		if _, err := conn.ExecContext(ctx, stat); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, stat); err != nil {
 			utils.AddError(ctx, "Failed to create role", err)
 			return nil
 		}
@@ -135,7 +135,7 @@ func (d databaseRole) Drop(ctx context.Context) {
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DROP ROLE [%s]", name)); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("DROP ROLE [%s]", name)); err != nil {
 			utils.AddError(ctx, "Failed to drop role", err)
 		}
 
@@ -150,7 +150,7 @@ func (d databaseRole) Rename(ctx context.Context, name string) {
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER ROLE [%s] WITH NAME = [%s]", oldName, name)); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER ROLE [%s] WITH NAME = [%s]", oldName, name)); err != nil {
 			utils.AddError(ctx, "Failed to rename role", err)
 		}
 
@@ -172,7 +172,7 @@ func (d databaseRole) ChangeOwner(ctx context.Context, ownerId GenericDatabasePr
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER AUTHORIZATION ON ROLE::[%s] TO [%s]", roleName, ownerName)); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER AUTHORIZATION ON ROLE::[%s] TO [%s]", roleName, ownerName)); err != nil {
 			utils.AddError(ctx, "Failed to change role ownership", err)
 		}
 
@@ -187,7 +187,7 @@ func (d databaseRole) AddMember(ctx context.Context, memberId GenericDatabasePri
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER ROLE [%s] ADD MEMBER [%s]", roleName, memberName)); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER ROLE [%s] ADD MEMBER [%s]", roleName, memberName)); err != nil {
 			utils.AddError(ctx, "Failed to add role member", err)
 		}
 
@@ -207,7 +207,7 @@ func (d databaseRole) RemoveMember(ctx context.Context, memberId GenericDatabase
 			return nil
 		}
 
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("ALTER ROLE [%s] DROP MEMBER [%s]", roleName, memberName)); err != nil {
+		if _, err := ExecContextWithRetry(ctx, conn, fmt.Sprintf("ALTER ROLE [%s] DROP MEMBER [%s]", roleName, memberName)); err != nil {
 			utils.AddError(ctx, "Failed to remove member from role", err)
 		}
 
